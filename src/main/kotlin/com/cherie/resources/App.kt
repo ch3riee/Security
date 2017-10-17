@@ -10,6 +10,10 @@ import org.eclipse.jetty.security.ConstraintMapping
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.security.HashLoginService
 import org.eclipse.jetty.server.session.*
+import org.postgresql.ds.PGSimpleDataSource
+import org.eclipse.jetty.plus.jndi.Resource
+
+
 
 
 object App{
@@ -52,10 +56,17 @@ object App{
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints
         csh.loginService = HashLoginService()
+        //AccountDb.init()
+
+        val simpleDataSource = PGSimpleDataSource()
+        simpleDataSource.serverName = "db-account"
+        simpleDataSource.databaseName = "account"
+        simpleDataSource.user = "jetty"
+        simpleDataSource.password = "jettypass"
+        val jndiName = "jdbc/userStore"
+        val mydatasource = Resource("java:comp/env/" + jndiName, simpleDataSource)
+        server.setAttribute("userStore", mydatasource)
         AccountDb.init()
-
-
-
 
         try{
             server.start()
