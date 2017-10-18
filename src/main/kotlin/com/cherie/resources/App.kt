@@ -42,16 +42,24 @@ object App{
 
         val constraint = Constraint()
         constraint.name = "auth"
-        constraint.setRoles(arrayOf("user"))
-        constraint.authenticate = true
+        constraint.setRoles(arrayOf("guest"))
+        constraint.authenticate = false
 
         val cm = ConstraintMapping()
         cm.constraint = constraint
         cm.pathSpec = "/rest/teams/*"
 
+        val cm2 = ConstraintMapping()
+        val constraint2 = Constraint()
+        constraint.name = "excludeauth"
+        constraint.authenticate = false
+        cm2.constraint = constraint2
+        cm2.pathSpec = "/rest/login/*"
+
         csh.authenticator = CustomAuthenticator()
         csh.realmName = "MyRealm" //does this realm thing matter without the login service?
         csh.addConstraintMapping(cm)
+        csh.addConstraintMapping(cm2)
         //csh.loginService = loginService
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints

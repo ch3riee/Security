@@ -12,14 +12,20 @@ import javax.sql.DataSource
 
 object Users : Table() {
     val id = integer("id").autoIncrement("users_seq").primaryKey() // Column<Int>
-    val username = varchar("name",  50) // Column<String>
-    val password = varchar("pd", 50)
+    val username = varchar("username",  50) // Column<String>
+    val password = varchar("pwd", 50)
 
 }
 
-object Cities : Table() {
-    val id = integer("id").autoIncrement("cities_seq").primaryKey() // Column<Int>
-    val name = varchar("name", 50) // Column<String>
+object Roles : Table() {
+    val id = integer("id").autoIncrement("roles_seq").primaryKey() // Column<Int>
+    val name = varchar("rolename", 50) // Column<String>
+    val desc = varchar("description", 50)
+}
+
+object UserRole : Table() {
+    val uid = (integer("uid") references Users.id)
+    val roleid = (integer("roleid") references Roles.id)
 }
 
 
@@ -30,9 +36,11 @@ object AccountDb {
         val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
         Database.connect(myDatasource)
+
         transaction {
-            create (Cities, Users)
-            val saintPetersburgId = Cities.insert {
+
+            create (Users, Roles, UserRole) //just create the tables in init
+            /*val saintPetersburgId = Cities.insert {
                 it[name] = "St. Petersburg"
             } get Cities.id
 
@@ -57,7 +65,7 @@ object AccountDb {
 
             for (user in Users.selectAll()) {
                 println("${user[Users.id]}: ${user[Users.username]}")
-            }
+            }*/
 
 
 

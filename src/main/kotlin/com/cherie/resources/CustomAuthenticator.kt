@@ -20,6 +20,7 @@ import org.eclipse.jetty.http.HttpHeaderValue
 import org.eclipse.jetty.http.HttpMethod
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.http.MimeTypes
+import org.eclipse.jetty.security.AbstractLoginService
 import org.eclipse.jetty.security.Authenticator
 import org.eclipse.jetty.security.ServerAuthException
 import org.eclipse.jetty.security.UserAuthentication
@@ -35,9 +36,16 @@ import org.eclipse.jetty.util.URIUtil
 import org.eclipse.jetty.util.log.Log
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.security.Credential
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.Serializable
 import java.security.Principal
+import java.util.ArrayList
+import javax.naming.InitialContext
 import javax.security.auth.Subject
+import javax.sql.DataSource
 
 /**
  * FORM Authenticator.
@@ -63,6 +71,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
     private var _formLoginPath: String? = null
     private var _alwaysSaveUri: Boolean = false
     private var _dispatch: Boolean = false
+
     /* ------------------------------------------------------------ */
     /* ------------------------------------------------------------ */
     /**
@@ -147,12 +156,64 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //need to create a UserIdentity and create database connection and update if user.
         if (username == null)
             return null
-        //not really a username
+        //Get sso token and then subsequently get the user email as username
+        var user_email: String = username
+        var authenticated: Boolean = false
+        if(password == null) {
+            user_email = ssoHelper(username)
+        }
+        else{
+            //this is a local authentication attempt, check database to see if credentials are correct
+            println("TRYING TO LOGIN LOCALLY IN LOGIN")
+            val ic = InitialContext()
+            val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
+            Database.connect(myDatasource)
+            transaction{
+                val curruser = Users.select {
+                    Users.username.eq(user_email)
+                }
+                println(curruser.count())
+                if (curruser.count() == 1)
+                {
+                    var cred: String? = null
+                    //in this case we do not create a new entry unless was on the signup page.
+                    //for sso we create one if not in the db yet.
+                    curruser.forEach{
+                        cred = it[Users.password]
+                    }
+                    println(cred)
+                    println(password)
+                    if(cred!!.equals(password))
+                    {
+                        println("authentication is true")
+                        authenticated = true
+                    }
+
+                }
+            }
+        }
+        if(authenticated == false)
+        {
+            println("authentication did not work for local login")
+           return null //was not authenticated for local login
+        }
+        //if we made it this far than we have authenticated both sso and local login
+        val user = createUserIdentity(user_email, password as String)
+        if (user != null) {
+            val session = (request as HttpServletRequest).getSession(true)
+            val cached = SessionAuthentication(authMethod, user, password)
+            session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
+            println(session)
+        }
+        return user
+    }
+
+    fun ssoHelper(code: String): String{
         val jsonResponse = Unirest.post("https://github.com/login/oauth/access_token")
                 .header("accept", "application/json")
-                .queryString("client_id","c1371dc4d42722495100" )
-                .queryString("client_secret","9c445d6a689f8c5b94ca9a9d5669a19abe86feec")
-                .queryString("code", username)
+                .queryString("client_id", "c1371dc4d42722495100")
+                .queryString("client_secret", "9c445d6a689f8c5b94ca9a9d5669a19abe86feec")
+                .queryString("code", code)
                 .asJson()
         val obj = jsonResponse.getBody().getObject()
         val a_token: String = obj.getString("access_token")
@@ -162,31 +223,69 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 .asJson()
         val userArray = userResponse.getBody().getArray()
         val user_email = userArray.getJSONObject(0).getString("email")
-        val user = createUserIdentity(user_email)
-        if (user != null) {
-            val session = (request as HttpServletRequest).getSession(true)
-            val cached = SessionAuthentication(authMethod, user, password)
-            session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            println(session)
-        }
-        println(user)
-        return user
+        return user_email
     }
 
-    fun createUserIdentity(username: String): UserIdentity? {
-        val userPrincipal = UserPrincipal(username, null) //nul for credential?
-        //val userPrincipal: AbstractLoginService.UserPrincipal = loadUserInfo(username)
+    fun createUserIdentity(user_name: String, pwd: String?): UserIdentity? {
+        //code for accessing database
+        val roles = ArrayList<String>()
+        val ic = InitialContext()
+        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
+        Database.connect(myDatasource)
+        transaction{
+            val curruser = Users.select {
+                Users.username.eq(user_name)
+            }
+            if (curruser.count() < 1)
+            {
+                //there is no entry yet create a new row in users table
+                val userid = Users.insert{
+                    it[username] = user_name
+                    it[password] = pwd
+                } get Users.id
+
+                //create a new row in roles table
+                val rid = Roles.insert{
+                    it[name] = "guest"
+                    it[desc]= "default role for all user accounts"
+                } get Roles.id
+
+                //create an entry in the user-role table
+                UserRole.insert{
+                    it[uid] = userid
+                    it[roleid] = rid
+                }
+            }
+            else{
+                //just need to grab the role information
+                var currid: Int = 0
+                curruser.forEach{
+                    currid = it[Users.id]
+                }
+                UserRole.select{
+                    UserRole.uid.eq(currid)
+                }.forEach{
+                    Roles.select{
+                        Roles.id.eq(it[UserRole.roleid])
+                    }.forEach{
+                        roles.add(it[Roles.name])
+                    }
+                }
+            }
+        }
+        val cred = Credential.getCredential(pwd)
+        val userPrincipal = UserPrincipal(user_name, cred) //nul for credential?
         if (userPrincipal != null) {
             //safe to load the roles
             val subject = Subject()
             subject.principals.add(userPrincipal)
-            /*subject.privateCredentials.add(userPrincipal!!._credential)
+            subject.privateCredentials.add(cred)
             if (roles != null)
                 for (role in roles!!)
-                    subject.principals.add(RolePrincipal(role))*/
+                    subject.principals.add(RolePrincipal(role))
             subject.setReadOnly()
             println("Creating user identity")
-            return _identityService.newUserIdentity(subject, userPrincipal, arrayOf("user"))
+            return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
         }
         //should not get here
         return null
@@ -226,10 +325,23 @@ class CustomAuthenticator() : LoginAuthenticator() {
         }
     }
 
+    /* ------------------------------------------------------------ */
+    /**
+     * RolePrincipal
+     */
+    class RolePrincipal(private val _roleName: String) : Principal, Serializable {
+        override fun getName(): String {
+            return _roleName
+        }
+
+        companion object {
+            private const val serialVersionUID = 2998397924051854402L
+        }
+    }
+
 
     /* ------------------------------------------------------------ */
     override fun prepareRequest(request: ServletRequest?) {
-        println("inside prepare Request")
         //if this is a request resulting from a redirect after auth is complete
         //(ie its from a redirect to the original request uri) then due to
         //browser handling of 302 redirects, the method may not be the same as
@@ -239,8 +351,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //See Servlet Spec 3.1 sec 13.6.3
         val httpRequest = request as HttpServletRequest?
         val session = httpRequest!!.getSession(false)
-        println("in prepare")
-        println(session)
         if (session == null || session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) == null)
             return  //not authenticated yetv
         val juri = session.getAttribute(__J_URI) as String?
@@ -266,7 +376,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
     /* ------------------------------------------------------------ */
     @Throws(ServerAuthException::class)
     override fun validateRequest(req: ServletRequest, res: ServletResponse, mandatory: Boolean): Authentication {
-        println("in validate request")
         val request = req as HttpServletRequest
         val response = res as HttpServletResponse
         val base_request = Request.getBaseRequest(request)
@@ -286,13 +395,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //unauthenticated
         if (session == null)
         {
-            println("Session is null")
             return Authentication.UNAUTHENTICATED
         }
 
 
         try {
-            println("in try")
             // Handle a request for authentication.
             if (isJSecurityCheck(uri)) {
                 val tempCode = request.getParameter("code")
@@ -300,7 +407,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val user = login(tempCode, "", request)
                 session = request.getSession(false)
                 if (user != null) {
-                    println("redirecting b/c user not null")
                     // Redirect to original request
                     var nuri: String? = "hi"
                     var form_auth: CustomAuthentication = CustomAuthentication(authMethod, user)
@@ -339,6 +445,56 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
                 return Authentication.SEND_FAILURE
             }
+            if(isJLocal(uri))
+            {
+                println("INSIDE J LOCAL")
+                val username = request.getParameter(__J_USERNAME)
+                val password = request.getParameter(__J_PASSWORD)
+                val user = login(username, password , request)
+                println(username)
+                println(password)
+                session = request.getSession(false)
+                if (user != null) {
+                    println("inside isJLocal")
+                    // Redirect to original request
+                    var nuri: String? = "hi"
+                    var form_auth: CustomAuthentication = CustomAuthentication(authMethod, user)
+                    synchronized(session) {
+                        nuri = session!!.getAttribute(__J_URI) as String?
+
+                        if (nuri == null || nuri!!.length == 0) {
+                            nuri = "http://127.0.0.1:8080/rest/login/success"
+                            if (nuri!!.length == 0)
+                                nuri = URIUtil.SLASH
+                        }
+                    }
+
+                    response.setContentLength(0)
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
+                    println("just redirected, returning form_auth for local login")
+                    return form_auth
+                }
+
+                // not authenticated
+                if (LOG.isDebugEnabled)
+                    LOG.debug("Form authentication FAILED")
+                if (_formErrorPage == null) {
+                    LOG.debug("auth failed ->403")
+                    response?.sendError(HttpServletResponse.SC_FORBIDDEN)
+                } else if (_dispatch) {
+                    val dispatcher = request.getRequestDispatcher(_formErrorPage)
+                    response.setHeader(HttpHeader.CACHE_CONTROL.asString(), HttpHeaderValue.NO_CACHE.asString())
+                    response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
+                    dispatcher.forward(FormRequest(request), FormResponse(response))
+                } else {
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                }
+
+                return Authentication.SEND_FAILURE
+
+            }//end of local login sequence
 
             // Look for cached authentication
             val authentication = session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
@@ -397,6 +553,16 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                 dispatcher.forward(FormRequest(request), FormResponse(response))
             } else {
+                val regex = Regex("/login(?=/|$)")
+                val match = regex.containsMatchIn(uri)
+                println(uri)
+                println(match)
+                if (match != false)
+                {
+                   //we do not want to redirect or send the challenge
+                    return Authentication.NOT_CHECKED
+
+                }
                 LOG.debug("challenge {}->{}", session.id, _formLoginPage)
                 val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                 base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
@@ -418,6 +584,18 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (jsc < 0)
             return false
         val e = jsc + __J_SECURITY_CHECK.length
+        if (e == uri.length)
+            return true
+        val c = uri[e]
+        return c == ';' || c == '#' || c == '/' || c == '?'
+    }
+
+    fun isJLocal(uri: String): Boolean {
+        val jsc = uri.indexOf(__J_LOCAL)
+
+        if (jsc < 0)
+            return false
+        val e = jsc + __J_LOCAL.length
         if (e == uri.length)
             return true
         val c = uri[e]
@@ -511,6 +689,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val __J_POST = "org.eclipse.jetty.security.form_POST"
         val __J_METHOD = "org.eclipse.jetty.security.form_METHOD"
         val __J_SECURITY_CHECK = "/rest/login/ssocallback"
+        val __J_LOCAL = "/rest/login/localcallback"
+        val __J_USERNAME = "j_username"
+        val __J_PASSWORD = "j_password"
     }
 }
 
