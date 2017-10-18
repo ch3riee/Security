@@ -159,8 +159,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //Get sso token and then subsequently get the user email as username
         var user_email: String = username
         var authenticated: Boolean = false
-        if(password == null) {
+        if(password.equals("")) {
+            println("is inside password.equals")
             user_email = ssoHelper(username)
+            authenticated = true
         }
         else{
             //this is a local authentication attempt, check database to see if credentials are correct
@@ -223,6 +225,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 .asJson()
         val userArray = userResponse.getBody().getArray()
         val user_email = userArray.getJSONObject(0).getString("email")
+        println(user_email)
         return user_email
     }
 
@@ -382,6 +385,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val base_response = base_request.response
 
         var uri: String? = request.requestURI
+        println("----------------------")
+        println(uri)
         if (uri == null)
             uri = URIUtil.SLASH
 
@@ -401,7 +406,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
         try {
             // Handle a request for authentication.
+            println("in try")
+            println(uri)
             if (isJSecurityCheck(uri)) {
+                println("in isJSecurityCheck")
                 val tempCode = request.getParameter("code")
 
                 val user = login(tempCode, "", request)
@@ -445,7 +453,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
                 return Authentication.SEND_FAILURE
             }
-            if(isJLocal(uri))
+            else if(isJLocal(uri))
             {
                 println("INSIDE J LOCAL")
                 val username = request.getParameter(__J_USERNAME)
@@ -472,6 +480,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setContentLength(0)
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
+                    println(nuri)
                     println("just redirected, returning form_auth for local login")
                     return form_auth
                 }

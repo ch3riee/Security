@@ -11,7 +11,6 @@ import javax.ws.rs.*
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Cookie
 
-//import org.apache.shiro.subject.Subject
 
 @Path("teams")
 @Produces(APPLICATION_JSON)
@@ -29,21 +28,10 @@ class TeamResource{
         teams.put("GSW", Team("GSW", 20, false, games))
     }
 
-    /*fun isSessionValid(sessionId: String): Boolean {
-        val requestedSubject = Subject.Builder().sessionId(sessionId).buildSubject()
-        return requestedSubject.getSession(false) != null
-    }*/
-
     @GET
     @Produces(APPLICATION_JSON)
     @Path("{teamname}")
     fun getTeam(@PathParam("teamname") teamname: String, @Context request: HttpServletRequest, @CookieParam("JSESSIONID") cookie: Cookie?): Response {
-        /*if((cookie == null) || ((cookie != null) && isSessionValid(cookie.getValue()) != true))
-        {
-            //not valid we should redirect to login page
-            //session was null or is no longer valid.
-            return Response.temporaryRedirect(URI("http://127.0.0.1:8080/rest/login")).build()
-        }*/
 
         if(teams.containsKey(teamname))
         {
@@ -72,11 +60,6 @@ class TeamResource{
 
     }
 
-    /* @PUT
-     @Path("{teamname}")
-     fun updateTeam(@PathParam("teamname") teamname: String, team: com.cherie.resources.Team){
-         teams.put(team.name, team)
-     }*/
 
     @DELETE
     @Path("{teamname}")
