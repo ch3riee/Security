@@ -63,16 +63,12 @@ object App{
         cm2.pathSpec = "/rest/hello/*"
         cm2.constraint = constraint2
 
-
-        //csh.realmName = "MyRealm" //does this realm thing matter without the login service?
         csh.addConstraintMapping(cm)
         csh.addConstraintMapping(cm2)
         csh.authenticator = CustomAuthenticator()
-        //csh.loginService = loginService
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints
         csh.loginService = HashLoginService()
-        //AccountDb.init()
 
         val simpleDataSource = PGSimpleDataSource()
         simpleDataSource.serverName = "db-account"

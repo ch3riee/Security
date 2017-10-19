@@ -150,7 +150,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
     /* ------------------------------------------------------------ */
     override fun login(username: String, password: Any, request: ServletRequest): UserIdentity? {
-        println("in login")
         //this is the most important to override. Called by login down below
         //val user = super.login(username, password, request)
         //this^ calls the loginservice login method
@@ -161,13 +160,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
         var user_email: String = username
         var authenticated: Boolean = false
         if(password.equals("")) {
-            println("is inside password.equals")
             user_email = ssoHelper(username)
             authenticated = true
         }
         else{
             //this is a local authentication attempt, check database to see if credentials are correct
-            println("TRYING TO LOGIN LOCALLY IN LOGIN")
             val ic = InitialContext()
             val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
             Database.connect(myDatasource)
@@ -197,12 +194,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
         }
         //if we made it this far than we have authenticated both sso and local login
         val user = createUserIdentity(user_email, password as String)
-        //println(user.isUserInRole("admin", "auth2"))
         if (user != null) {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            println(session)
         }
         return user
     }
@@ -267,7 +262,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     Roles.select{
                         Roles.id.eq(it[UserRole.roleid])
                     }.forEach{
-                        println(it[Roles.name])
                         roles.add(it[Roles.name])
                     }
                 }
@@ -293,7 +287,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             subject.privateCredentials.add(cred)
             if (roles != null)
                 for (role in roles!!){
-                    println(role)
                     subject.principals.add(RolePrincipal(role))}
             subject.setReadOnly()
             println("Creating user identity")
@@ -395,8 +388,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val base_response = base_request.response
 
         var uri: String? = request.requestURI
-        println("----------------------")
-        println(uri)
         if (uri == null)
             uri = URIUtil.SLASH
 
@@ -404,7 +395,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             return DeferredAuthentication(this)
 
         var session: HttpSession? = request.getSession(true)
-        //println(session!!.getId())
 
         //if unable to create a session, user must be
         //unauthenticated
@@ -415,11 +405,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
 
         try {
-            // Handle a request for authentication.
-            println("in try")
-            println(uri)
+            // Handle a request for authentication. )
             if (isJSecurityCheck(uri)) {
-                println("in isJSecurityCheck")
                 val tempCode = request.getParameter("code")
 
                 val user = login(tempCode, "", request)
@@ -431,7 +418,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
 
-                        if (nuri == null || nuri!!.length == 0) {
+                        if (nuri == null || nuri!!.length == 0 || nuri!!.contains("http://127.0.0.1:8080/rest/login/") ) {
                             nuri = "http://127.0.0.1:8080/rest/login/success"
                             if (nuri!!.length == 0)
                                 nuri = URIUtil.SLASH
@@ -441,7 +428,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setContentLength(0)
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
-                    println("just redirected, returning form_auth")
                     return form_auth
                 }
 
@@ -465,22 +451,17 @@ class CustomAuthenticator() : LoginAuthenticator() {
             }
             else if(isJLocal(uri))
             {
-                println("INSIDE J LOCAL")
                 val username = request.getParameter(__J_USERNAME)
                 val password = request.getParameter(__J_PASSWORD)
                 val user = login(username, password , request)
-                println(username)
-                println(password)
                 session = request.getSession(false)
                 if (user != null) {
-                    println("inside isJLocal")
                     // Redirect to original request
                     var nuri: String? = "hi"
                     var form_auth: CustomAuthentication = CustomAuthentication(authMethod, user)
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
-
-                        if (nuri == null || nuri!!.length == 0) {
+                        if (nuri == null || nuri!!.length == 0 || nuri!!.contains("http://127.0.0.1:8080/rest/login/")) {
                             nuri = "http://127.0.0.1:8080/rest/login/success"
                             if (nuri!!.length == 0)
                                 nuri = URIUtil.SLASH
@@ -490,8 +471,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setContentLength(0)
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
-                    println(nuri)
-                    println("just redirected, returning form_auth for local login")
                     return form_auth
                 }
 
