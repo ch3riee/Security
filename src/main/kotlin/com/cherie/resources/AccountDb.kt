@@ -3,7 +3,6 @@ package com.cherie.resources
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.SchemaUtils.create
-import org.jetbrains.exposed.sql.SchemaUtils.drop
 import javax.naming.InitialContext
 import javax.sql.DataSource
 
@@ -40,6 +39,16 @@ object AccountDb {
         transaction {
 
             create (Users, Roles, UserRole) //just create the tables in init
+/*
+            Roles.insert{
+                it[name] = "guest"
+                it[desc] = "default role given"
+            }
+
+            Roles.insert{
+                it[name] = "admin"
+                it[desc] = "administrative role given"
+            }*/
             /*val saintPetersburgId = Cities.insert {
                 it[name] = "St. Petersburg"
             } get Cities.id

@@ -12,6 +12,7 @@ import org.eclipse.jetty.security.HashLoginService
 import org.eclipse.jetty.server.session.*
 import org.postgresql.ds.PGSimpleDataSource
 import org.eclipse.jetty.plus.jndi.Resource
+import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature
 
 
 
@@ -21,13 +22,15 @@ object App{
     @JvmStatic fun main (args: Array<String>){
         var config = ResourceConfig()
         config.packages("com.cherie.resources")
+        //config.register(RolesAllowedDynamicFeature::class.java)
+
         val servlet = ServletHolder(ServletContainer(config))
         val server = Server(8080)
         val context = ServletContextHandler(server, "/")
         context.addServlet(servlet, "/rest/*")
+
         val sessionManager = SessionHandler()
         sessionManager.setUsingCookies(true)
-       // sessionManager.setSessionIdPathParameterName("none")
         val sessionCache = DefaultSessionCache(sessionManager)
         val db = JDBCSessionDataStore()
         val myAdaptor = DatabaseAdaptor()
@@ -42,24 +45,29 @@ object App{
 
         val constraint = Constraint()
         constraint.name = "auth"
-        constraint.setRoles(arrayOf("guest"))
-        constraint.authenticate = false
+        constraint.authenticate = true
+        constraint.setRoles(arrayOf( "admin"))
+
 
         val cm = ConstraintMapping()
+
+        cm.pathSpec = "/rest/admin/*"
         cm.constraint = constraint
-        cm.pathSpec = "/rest/teams/*"
+
+        val constraint2 = Constraint()
+        constraint2.name = "auth2"
+        constraint2.authenticate = true
+        constraint2.setRoles(arrayOf("guest"))
 
         val cm2 = ConstraintMapping()
-        val constraint2 = Constraint()
-        constraint.name = "excludeauth"
-        constraint.authenticate = false
+        cm2.pathSpec = "/rest/hello/*"
         cm2.constraint = constraint2
-        cm2.pathSpec = "/rest/login/*"
 
-        csh.authenticator = CustomAuthenticator()
-        csh.realmName = "MyRealm" //does this realm thing matter without the login service?
+
+        //csh.realmName = "MyRealm" //does this realm thing matter without the login service?
         csh.addConstraintMapping(cm)
         csh.addConstraintMapping(cm2)
+        csh.authenticator = CustomAuthenticator()
         //csh.loginService = loginService
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints

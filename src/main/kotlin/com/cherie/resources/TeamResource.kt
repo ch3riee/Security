@@ -6,16 +6,26 @@ import javax.ws.rs.core.MediaType.APPLICATION_JSON
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
+import javax.annotation.security.DeclareRoles
+import javax.annotation.security.RolesAllowed
 import javax.servlet.http.HttpServletRequest
 import javax.ws.rs.*
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Cookie
+import javax.ws.rs.core.SecurityContext
 
-
-@Path("teams")
-@Produces(APPLICATION_JSON)
+//guest privileges will let you come here
+@Path("hello")
+//@DeclareRoles(value = *arrayOf("guest", "admin"))
 class TeamResource{
-    companion object {
+
+    //@RolesAllowed("guest")
+    @GET
+    fun getHello(): Response{
+        return Response.status(Status.OK).type("text/plain").entity("HELLO WORLD").build()
+    }
+
+    /*companion object {
         var teams = HashMap<String, Team>()
     }
 
@@ -69,6 +79,6 @@ class TeamResource{
 
     //don't need to implement HEAD or OPTIONS because jersey automatically using GET
 
-
+       */
 }
 

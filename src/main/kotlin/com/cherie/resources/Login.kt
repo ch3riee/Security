@@ -172,16 +172,16 @@ class Login{
                     it[password] = pwd
                 } get Users.id
 
-                //create a new row in roles table
-                val rid = Roles.insert{
-                    it[name] = "guest"
-                    it[desc]= "default role for all user accounts"
-                } get Roles.id
-
-                //create an entry in the user-role table
-                UserRole.insert{
-                    it[uid] = userid
-                    it[roleid] = rid
+                //create a new row in UserRole table
+                //find the role id for admin
+                Roles.select{
+                    Roles.name.eq("admin")
+                }.forEach{
+                    val adminid = it[Roles.id]
+                    UserRole.insert{
+                        it[uid] = userid
+                        it[roleid] = adminid
+                    }
                 }
             }
             for (user in Users.selectAll()) {

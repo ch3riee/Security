@@ -39,6 +39,7 @@ import org.eclipse.jetty.util.security.Credential
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.Serializable
 import java.security.Principal
@@ -174,7 +175,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val curruser = Users.select {
                     Users.username.eq(user_email)
                 }
-                println(curruser.count())
                 if (curruser.count() == 1)
                 {
                     var cred: String? = null
@@ -183,11 +183,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     curruser.forEach{
                         cred = it[Users.password]
                     }
-                    println(cred)
-                    println(password)
                     if(cred!!.equals(password))
                     {
-                        println("authentication is true")
                         authenticated = true
                     }
 
@@ -196,11 +193,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
         }
         if(authenticated == false)
         {
-            println("authentication did not work for local login")
            return null //was not authenticated for local login
         }
         //if we made it this far than we have authenticated both sso and local login
         val user = createUserIdentity(user_email, password as String)
+        //println(user.isUserInRole("admin", "auth2"))
         if (user != null) {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
@@ -225,7 +222,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 .asJson()
         val userArray = userResponse.getBody().getArray()
         val user_email = userArray.getJSONObject(0).getString("email")
-        println(user_email)
         return user_email
     }
 
@@ -247,17 +243,17 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     it[password] = pwd
                 } get Users.id
 
-                //create a new row in roles table
-                val rid = Roles.insert{
-                    it[name] = "guest"
-                    it[desc]= "default role for all user accounts"
-                } get Roles.id
-
-                //create an entry in the user-role table
-                UserRole.insert{
-                    it[uid] = userid
-                    it[roleid] = rid
+                //find the role id for admin
+                 Roles.select{
+                    Roles.name.eq("admin")
+                }.forEach{
+                     val guestid = it[Roles.id]
+                     UserRole.insert{
+                         it[uid] = userid
+                         it[roleid] = guestid
+                    }
                 }
+
             }
             else{
                 //just need to grab the role information
@@ -271,9 +267,21 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     Roles.select{
                         Roles.id.eq(it[UserRole.roleid])
                     }.forEach{
+                        println(it[Roles.name])
                         roles.add(it[Roles.name])
                     }
                 }
+            }
+            for (r in Roles.selectAll()) {
+                println("${r[Roles.id]}: ${r[Roles.name]}")
+            }
+
+            for(u in Users.selectAll()){
+                println("${u[Users.id]} : ${u[Users.username]}")
+            }
+
+            for(ru in UserRole.selectAll()){
+                println("${ru[UserRole.uid]} : ${ru[UserRole.roleid]}")
             }
         }
         val cred = Credential.getCredential(pwd)
@@ -284,10 +292,12 @@ class CustomAuthenticator() : LoginAuthenticator() {
             subject.principals.add(userPrincipal)
             subject.privateCredentials.add(cred)
             if (roles != null)
-                for (role in roles!!)
-                    subject.principals.add(RolePrincipal(role))
+                for (role in roles!!){
+                    println(role)
+                    subject.principals.add(RolePrincipal(role))}
             subject.setReadOnly()
             println("Creating user identity")
+            println(roles)
             return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
         }
         //should not get here
@@ -564,8 +574,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             } else {
                 val regex = Regex("/login(?=/|$)")
                 val match = regex.containsMatchIn(uri)
-                println(uri)
-                println(match)
                 if (match != false)
                 {
                    //we do not want to redirect or send the challenge
