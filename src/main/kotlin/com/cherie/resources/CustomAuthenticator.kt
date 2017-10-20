@@ -1,6 +1,8 @@
 package com.cherie.resources
 
 import com.mashape.unirest.http.Unirest
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.SignatureAlgorithm
 import java.io.IOException
 import java.util.Collections
 import java.util.Enumeration
@@ -42,7 +44,13 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.Serializable
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.security.KeyFactory
 import java.security.Principal
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
 import java.util.ArrayList
 import javax.naming.InitialContext
 import javax.security.auth.Subject
@@ -198,8 +206,20 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
+            val jwt = generateJWT(user_email, password)
+            session.setAttribute("JwtToken", jwt)
+            println(jwt)
         }
         return user
+    }
+
+    fun generateJWT(email: String, pwd: String?): String {
+        val roles = getRoles(email, pwd)
+        val privateKey = (this::class.java.classLoader).getResource("pki/Jetty.key").readText()
+        val mymap = HashMap<String, Any>()
+        mymap.put("Roles", roles.toTypedArray())
+        val jws = Jwts.builder().setSubject(email).setClaims(mymap).signWith(SignatureAlgorithm.HS256, privateKey).compact()
+        return jws
     }
 
     fun ssoHelper(code: String): String{
@@ -220,9 +240,32 @@ class CustomAuthenticator() : LoginAuthenticator() {
         return user_email
     }
 
+
     fun createUserIdentity(user_name: String, pwd: String?): UserIdentity? {
         //code for accessing database
-        val roles = ArrayList<String>()
+
+        val cred = Credential.getCredential(pwd)
+        val userPrincipal = UserPrincipal(user_name, cred) //nul for credential?
+        if (userPrincipal != null) {
+            //safe to load the roles
+            val subject = Subject()
+            subject.principals.add(userPrincipal)
+            subject.privateCredentials.add(cred)
+            val roles = getRoles(user_name, pwd)
+            if (roles != null)
+                for (role in roles!!){
+                    subject.principals.add(RolePrincipal(role))}
+            subject.setReadOnly()
+            println("Creating user identity")
+            println(roles)
+            return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
+        }
+        //should not get here
+        return null
+    }
+
+    fun getRoles(user_name: String, pwd: String?): ArrayList<String>{
+        var roles = ArrayList<String>()
         val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
         Database.connect(myDatasource)
@@ -239,13 +282,13 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 } get Users.id
 
                 //find the role id for admin
-                 Roles.select{
+                Roles.select{
                     Roles.name.eq("admin")
                 }.forEach{
-                     val guestid = it[Roles.id]
-                     UserRole.insert{
-                         it[uid] = userid
-                         it[roleid] = guestid
+                    val guestid = it[Roles.id]
+                    UserRole.insert{
+                        it[uid] = userid
+                        it[roleid] = guestid
                     }
                 }
 
@@ -256,6 +299,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 curruser.forEach{
                     currid = it[Users.id]
                 }
+
                 UserRole.select{
                     UserRole.uid.eq(currid)
                 }.forEach{
@@ -266,35 +310,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     }
                 }
             }
-            for (r in Roles.selectAll()) {
-                println("${r[Roles.id]}: ${r[Roles.name]}")
-            }
-
-            for(u in Users.selectAll()){
-                println("${u[Users.id]} : ${u[Users.username]}")
-            }
-
-            for(ru in UserRole.selectAll()){
-                println("${ru[UserRole.uid]} : ${ru[UserRole.roleid]}")
-            }
         }
-        val cred = Credential.getCredential(pwd)
-        val userPrincipal = UserPrincipal(user_name, cred) //nul for credential?
-        if (userPrincipal != null) {
-            //safe to load the roles
-            val subject = Subject()
-            subject.principals.add(userPrincipal)
-            subject.privateCredentials.add(cred)
-            if (roles != null)
-                for (role in roles!!){
-                    subject.principals.add(RolePrincipal(role))}
-            subject.setReadOnly()
-            println("Creating user identity")
-            println(roles)
-            return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
-        }
-        //should not get here
-        return null
+        return roles
+
     }
 
 
@@ -410,7 +428,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val tempCode = request.getParameter("code")
 
                 val user = login(tempCode, "", request)
-                session = request.getSession(false)
+                session = request.getSession(true)
                 if (user != null) {
                     // Redirect to original request
                     var nuri: String? = "hi"
@@ -454,7 +472,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val username = request.getParameter(__J_USERNAME)
                 val password = request.getParameter(__J_PASSWORD)
                 val user = login(username, password , request)
-                session = request.getSession(false)
+                session = request.getSession(true)
                 if (user != null) {
                     // Redirect to original request
                     var nuri: String? = "hi"
@@ -498,9 +516,14 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val authentication = session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
                 // Has authentication been revoked?
+                println("authentication: " + authentication.toString())
+                println("userIdentity: " + (authentication as Authentication.User).userIdentity)
+                println(_loginService)
+                println(_loginService.validate(authentication.userIdentity))
                 if (authentication is Authentication.User &&
                         _loginService != null &&
                         !_loginService.validate(authentication.userIdentity)) {
+                    println("in remove")
                     session.removeAttribute(SessionAuthentication.__J_AUTHENTICATED)
                 } else {
                     synchronized(session) {

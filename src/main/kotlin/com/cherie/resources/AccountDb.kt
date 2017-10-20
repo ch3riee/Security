@@ -39,8 +39,8 @@ object AccountDb {
         transaction {
 
             create (Users, Roles, UserRole) //just create the tables in init
-/*
-            Roles.insert{
+
+            /*Roles.insert{
                 it[name] = "guest"
                 it[desc] = "default role given"
             }
@@ -48,8 +48,9 @@ object AccountDb {
             Roles.insert{
                 it[name] = "admin"
                 it[desc] = "administrative role given"
-            }*/
-            /*val saintPetersburgId = Cities.insert {
+            }
+
+            val saintPetersburgId = Cities.insert {
                 it[name] = "St. Petersburg"
             } get Cities.id
 
@@ -64,17 +65,9 @@ object AccountDb {
             Users.insert{
                 it[username] = "cherie"
                 it[password] = "mypass"
-            }
-
-
-
-            for (city in Cities.selectAll()) {
-                println("${city[Cities.id]}: ${city[Cities.name]}")
-            }
-
-            for (user in Users.selectAll()) {
-                println("${user[Users.id]}: ${user[Users.username]}")
             }*/
+
+
 
 
 

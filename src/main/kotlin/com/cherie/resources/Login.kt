@@ -1,12 +1,9 @@
 package com.cherie.resources
 
-import javax.ws.rs.core.UriInfo
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 import javax.ws.rs.*
-import com.mashape.unirest.http.Unirest
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -24,14 +21,6 @@ class Login{
     @GET
     @Produces("text/html")
     fun loginGithub(): Response{
-        /*if(cookie != null)
-        {
-            val requestedSubject = Subject.Builder().sessionId(cookie.getValue()).buildSubject()
-            if(requestedSubject.getSession(false) != null)
-            {
-                return Response.temporaryRedirect(URI("http://127.0.0.1:8080/rest/login/success")).build()
-            }
-        }*/
         return Response.status(200).entity("<html>\n" +
                 "  <head>\n" +
                 "  </head>\n" +
@@ -137,15 +126,12 @@ class Login{
     @GET
     @Path("ssocallback")
     fun callbackSSO(@Context request: HttpServletRequest, @CookieParam("JSESSIONID") cookie: Cookie?){
-        //will hopefully receive the request from github
-        println(cookie!!.value)
 
     }
 
     @POST
     @Path("localcallback")
     fun callbackLocal(){
-       println("should be in callbacklocal")
     }
 
     @POST

@@ -17,12 +17,15 @@ import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature
 
 
 
+
+
+
 object App{
 
     @JvmStatic fun main (args: Array<String>){
         var config = ResourceConfig()
         config.packages("com.cherie.resources")
-        //config.register(RolesAllowedDynamicFeature::class.java)
+        config.register(RolesAllowedDynamicFeature::class.java)
 
         val servlet = ServletHolder(ServletContainer(config))
         val server = Server(8080)
@@ -31,6 +34,8 @@ object App{
 
         val sessionManager = SessionHandler()
         sessionManager.setUsingCookies(true)
+        sessionManager.maxInactiveInterval = 300
+        sessionManager.CookieConfig().maxAge = 60 * 5
         val sessionCache = DefaultSessionCache(sessionManager)
         val db = JDBCSessionDataStore()
         val myAdaptor = DatabaseAdaptor()
@@ -43,28 +48,25 @@ object App{
         context.securityHandler = csh
 
 
-        val constraint = Constraint()
-        constraint.name = "auth"
-        constraint.authenticate = true
-        constraint.setRoles(arrayOf( "admin"))
+//        val constraint = Constraint()
+//        constraint.name = "auth"
+//        constraint.authenticate = true
+//        constraint.setRoles(arrayOf( "admin"))
+//        val cm = ConstraintMapping()
+//        cm.pathSpec = "/rest/admin/*"
+//        cm.constraint = constraint
+//
+//        val constraint2 = Constraint()
+//        constraint2.name = "auth2"
+//        constraint2.authenticate = true
+//        constraint2.setRoles(arrayOf("guest"))
+//        val cm2 = ConstraintMapping()
+//        cm2.pathSpec = "/rest/hello/*"
+//        cm2.constraint = constraint2
+//
+//        csh.addConstraintMapping(cm)
+//        csh.addConstraintMapping(cm2)
 
-
-        val cm = ConstraintMapping()
-
-        cm.pathSpec = "/rest/admin/*"
-        cm.constraint = constraint
-
-        val constraint2 = Constraint()
-        constraint2.name = "auth2"
-        constraint2.authenticate = true
-        constraint2.setRoles(arrayOf("guest"))
-
-        val cm2 = ConstraintMapping()
-        cm2.pathSpec = "/rest/hello/*"
-        cm2.constraint = constraint2
-
-        csh.addConstraintMapping(cm)
-        csh.addConstraintMapping(cm2)
         csh.authenticator = CustomAuthenticator()
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints
