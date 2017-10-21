@@ -3,7 +3,6 @@ package com.cherie.resources
 import com.mashape.unirest.http.Unirest
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
-import java.io.IOException
 import java.util.Collections
 import java.util.Enumeration
 import java.util.Locale
@@ -28,11 +27,11 @@ import org.eclipse.jetty.security.ServerAuthException
 import org.eclipse.jetty.security.UserAuthentication
 import org.eclipse.jetty.security.authentication.DeferredAuthentication
 import org.eclipse.jetty.security.authentication.LoginAuthenticator
-import org.eclipse.jetty.security.authentication.SessionAuthentication
 import org.eclipse.jetty.server.Authentication
 import org.eclipse.jetty.server.Authentication.User
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.UserIdentity
+import org.eclipse.jetty.util.ClassLoadingObjectInputStream
 import org.eclipse.jetty.util.MultiMap
 import org.eclipse.jetty.util.URIUtil
 import org.eclipse.jetty.util.log.Log
@@ -43,7 +42,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.io.Serializable
+import java.io.*
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -51,6 +50,8 @@ import java.security.KeyFactory
 import java.security.Principal
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.sql.Connection
+import java.sql.SQLException
 import java.util.ArrayList
 import javax.naming.InitialContext
 import javax.security.auth.Subject
@@ -201,14 +202,31 @@ class CustomAuthenticator() : LoginAuthenticator() {
            return null //was not authenticated for local login
         }
         //if we made it this far than we have authenticated both sso and local login
-        val user = createUserIdentity(user_email, password as String)
+        val user = createUserIdentity(user_email, password as String) as CustomUserIdentity
         if (user != null) {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
+            println("session in login" + session)
+            println("session attribute login" + session.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
             val jwt = generateJWT(user_email, password)
             session.setAttribute("JwtToken", jwt)
-            println(jwt)
+            val map = HashMap<String, Any>()
+            val m = HashMap<String, Any>()
+            map.put("cache", cached)
+            map.put("hi", "hello")
+
+            val baos = ByteArrayOutputStream()
+            val oos = ObjectOutputStream(baos)
+            oos.writeObject(cached)
+            oos.flush()
+            val bytes = baos.toByteArray()
+
+            val bais = ByteArrayInputStream(bytes)
+            val ois = ClassLoadingObjectInputStream(bais)
+            val obj = ois.readObject()
+            println(obj.toString())
+
         }
         return user
     }
@@ -404,7 +422,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val response = res as HttpServletResponse
         val base_request = Request.getBaseRequest(request)
         val base_response = base_request.response
-
         var uri: String? = request.requestURI
         if (uri == null)
             uri = URIUtil.SLASH
@@ -412,7 +429,54 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (isLoginOrErrorPage(URIUtil.addPaths(request.servletPath, request.pathInfo)) && !DeferredAuthentication.isDeferred(response))
             return DeferredAuthentication(this)
 
+        var cookies = request.cookies
+        if(cookies != null)
+        {
+            for(c in cookies)
+            {
+                println(c.name)
+                println(c.value)
+            }
+        }
         var session: HttpSession? = request.getSession(true)
+        val ic = InitialContext()
+        val myDatasource = ic.lookup("java:comp/env/jdbc/sessionStore") as DataSource
+        var conn: Connection? = null
+        try{
+            conn = myDatasource.getConnection()
+
+        }catch(e: SQLException){
+            println("error connecting to session db")
+        }finally{
+            if(conn != null)
+            {
+                val statement = conn.prepareStatement("select * from " + "jettysessions" +
+                        " where " + "jettysessions.sessionid" + " = ?")
+                val s = session!!.getId()
+                statement.setString(1, s)
+
+
+                var resultSet = statement.executeQuery()
+                while(resultSet.next()){
+                   println(resultSet.getString("sessionid"))
+                    val bytes = resultSet.getBytes("map")
+                    val input = ByteArrayInputStream(bytes)
+                    val ois = ClassLoadingObjectInputStream(input)
+                    val obj = ois.readObject()
+                    println(obj.toString())
+                   // println(obj.get(SessionAuthentication.__J_AUTHENTICATED))
+
+                }
+                conn.close()
+            }
+        }
+
+
+        println("session: " + session)
+        println("session: " + session)
+        println("session id: " + session!!.getId())
+        println(" is from cookie: " + request.isRequestedSessionIdFromCookie())
+        println(session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
 
         //if unable to create a session, user must be
         //unauthenticated
@@ -428,7 +492,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val tempCode = request.getParameter("code")
 
                 val user = login(tempCode, "", request)
-                session = request.getSession(true)
+                session = request.getSession(false)
                 if (user != null) {
                     // Redirect to original request
                     var nuri: String? = "hi"
@@ -472,7 +536,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val username = request.getParameter(__J_USERNAME)
                 val password = request.getParameter(__J_PASSWORD)
                 val user = login(username, password , request)
-                session = request.getSession(true)
+                session = request.getSession(false)
                 if (user != null) {
                     // Redirect to original request
                     var nuri: String? = "hi"
@@ -513,6 +577,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
             }//end of local login sequence
 
             // Look for cached authentication
+            println("same session id? " + session)
+            println("printing auth again " + session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
             val authentication = session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
                 // Has authentication been revoked?
