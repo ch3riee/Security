@@ -72,8 +72,8 @@ object App{
         csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints
         csh.loginService = HashLoginService()
         val idservice = CustomIdentityService()
-        //csh.loginService.identityService = idservice
-       // csh.identityService = idservice
+        csh.loginService.identityService = idservice
+        csh.identityService = idservice
 
         val simpleDataSource = PGSimpleDataSource()
         simpleDataSource.serverName = "db-account"
@@ -85,14 +85,14 @@ object App{
         server.setAttribute("userStore", mydatasource)
         AccountDb.init()
 
-        val sessionDataSource = PGSimpleDataSource()
+        /*val sessionDataSource = PGSimpleDataSource()
         sessionDataSource.serverName = "db-session"
         sessionDataSource.databaseName = "session"
         sessionDataSource.user = "jetty"
         sessionDataSource.password = "jettypass"
         val sessionName = "jdbc/sessionStore"
         val theSource = Resource("java:comp/env/" + sessionName, sessionDataSource)
-        server.setAttribute("sessionStore", theSource)
+        server.setAttribute("sessionStore", theSource)*/
 
         try{
             server.start()

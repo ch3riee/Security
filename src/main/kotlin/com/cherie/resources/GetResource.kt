@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest
 import javax.ws.rs.GET
 import javax.ws.rs.Path
 import javax.ws.rs.PathParam
+import javax.ws.rs.QueryParam
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 
@@ -13,8 +14,9 @@ class GetResource{
 
     @GET
     @PermitAll
-    @Path("{attribute}")
-    fun get(@PathParam("attribute") attr: String, @Context req: HttpServletRequest): Response {
+    fun get(@QueryParam("key") attr :String, @Context req: HttpServletRequest): Response {
+        //first handle the dot notation query param
+        //key=a.b.c.d
 
         val session = req.getSession(false)
         val ret = session.getAttribute(attr) as String?
@@ -24,5 +26,9 @@ class GetResource{
             return Response.status(Response.Status.OK).type("text/plain").entity("Attribute does not exist").build()
 
     }
+
+   /* fun index(obj: Any, i: String) : Any{
+        return obj::i
+    }*/
 
 }
