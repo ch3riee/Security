@@ -3,9 +3,6 @@ package com.cherie.resources
 import com.mashape.unirest.http.Unirest
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
-import java.util.Collections
-import java.util.Enumeration
-import java.util.Locale
 
 import javax.servlet.ServletException
 import javax.servlet.ServletRequest
@@ -42,17 +39,20 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import sun.security.rsa.RSAPrivateCrtKeyImpl
 import java.io.*
 import java.net.URI
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.security.KeyFactory
+import java.security.KeyPairGenerator
 import java.security.Principal
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.sql.Connection
 import java.sql.SQLException
-import java.util.ArrayList
+import java.util.*
 import javax.naming.InitialContext
 import javax.security.auth.Subject
 import javax.sql.DataSource
@@ -233,10 +233,12 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
     fun generateJWT(email: String, pwd: String?): String {
         val roles = getRoles(email, pwd)
-        val privateKey = (this::class.java.classLoader).getResource("pki/Jetty.key").readText()
+        var privateKey = (this::class.java.classLoader).getResource("pki/Jetty.key").readText().toByteArray()
+        privateKey = Base64.getDecoder().decode(privateKey)
         val mymap = HashMap<String, Any>()
         mymap.put("Roles", roles.toTypedArray())
-        val jws = Jwts.builder().setSubject(email).setClaims(mymap).signWith(SignatureAlgorithm.HS256, privateKey).compact()
+        println("This is the email: " + email)
+        val jws = Jwts.builder().setClaims(mymap).setSubject(email).signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey)).compact()
         return jws
     }
 
@@ -439,7 +441,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
             }
         }
         var session: HttpSession? = request.getSession(true)
-        val ic = InitialContext()
+        /*val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/sessionStore") as DataSource
         var conn: Connection? = null
         try{
@@ -476,7 +478,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
         println("session: " + session)
         println("session id: " + session!!.getId())
         println(" is from cookie: " + request.isRequestedSessionIdFromCookie())
-        println(session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
+        println(session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))*/
 
         //if unable to create a session, user must be
         //unauthenticated
@@ -553,6 +555,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setContentLength(0)
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
+                    println(nuri)
                     return form_auth
                 }
 
