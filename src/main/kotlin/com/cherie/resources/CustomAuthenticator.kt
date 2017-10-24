@@ -207,8 +207,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            println("session in login" + session)
-            println("session attribute login" + session.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
             val jwt = generateJWT(user_email, password)
             session.setAttribute("JwtToken", jwt)
             val map = HashMap<String, Any>()
@@ -225,7 +223,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val bais = ByteArrayInputStream(bytes)
             val ois = ClassLoadingObjectInputStream(bais)
             val obj = ois.readObject()
-            println(obj.toString())
 
         }
         return user
@@ -237,7 +234,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         privateKey = Base64.getDecoder().decode(privateKey)
         val mymap = HashMap<String, Any>()
         mymap.put("Roles", roles.toTypedArray())
-        println("This is the email: " + email)
         val jws = Jwts.builder().setClaims(mymap).setSubject(email).signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey)).compact()
         return jws
     }
@@ -276,8 +272,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 for (role in roles!!){
                     subject.principals.add(RolePrincipal(role))}
             subject.setReadOnly()
-            println("Creating user identity")
-            println(roles)
             return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
         }
         //should not get here
@@ -431,15 +425,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (isLoginOrErrorPage(URIUtil.addPaths(request.servletPath, request.pathInfo)) && !DeferredAuthentication.isDeferred(response))
             return DeferredAuthentication(this)
 
-        var cookies = request.cookies
-        if(cookies != null)
-        {
-            for(c in cookies)
-            {
-                println(c.name)
-                println(c.value)
-            }
-        }
         var session: HttpSession? = request.getSession(true)
         /*val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/sessionStore") as DataSource
@@ -555,7 +540,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setContentLength(0)
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
-                    println(nuri)
                     return form_auth
                 }
 
@@ -580,19 +564,12 @@ class CustomAuthenticator() : LoginAuthenticator() {
             }//end of local login sequence
 
             // Look for cached authentication
-            println("same session id? " + session)
-            println("printing auth again " + session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))
             val authentication = session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
                 // Has authentication been revoked?
-                println("authentication: " + authentication.toString())
-                println("userIdentity: " + (authentication as Authentication.User).userIdentity)
-                println(_loginService)
-                println(_loginService.validate(authentication.userIdentity))
                 if (authentication is Authentication.User &&
                         _loginService != null &&
                         !_loginService.validate(authentication.userIdentity)) {
-                    println("in remove")
                     session.removeAttribute(SessionAuthentication.__J_AUTHENTICATED)
                 } else {
                     synchronized(session) {
