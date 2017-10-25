@@ -13,6 +13,9 @@ import org.eclipse.jetty.server.session.*
 import org.postgresql.ds.PGSimpleDataSource
 import org.eclipse.jetty.plus.jndi.Resource
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature
+import org.glassfish.jersey.jackson.JacksonFeature
+
+
 
 
 
@@ -26,6 +29,7 @@ object App{
         var config = ResourceConfig()
         config.packages("com.cherie.resources")
         config.register(RolesAllowedDynamicFeature::class.java)
+        config.register(JacksonFeature::class.java)
 
         val servlet = ServletHolder(ServletContainer(config))
         val server = Server(8080)
