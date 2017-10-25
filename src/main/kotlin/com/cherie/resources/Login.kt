@@ -138,7 +138,6 @@ class Login{
     @Path("signupcallback")
     @Consumes("application/x-www-form-urlencoded")
     fun callbackSignUp(@FormParam("j_username") email: String, @FormParam("j_password") pwd: String): Response{
-        println("in signupcallback")
         val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
         Database.connect(myDatasource)
@@ -170,14 +169,13 @@ class Login{
                     }
                 }
             }
-            for (user in Users.selectAll()) {
+            /*for (user in Users.selectAll()) {
                 println("${user[Users.id]}: ${user[Users.username]} : ${user[Users.password]}")
-            }
+            }*/
 
         }
         if(exists == true)
         {
-            println("should be in here if email already exists")
            return Response.temporaryRedirect(URI("http://127.0.0.1:8080/rest/login/signup?redir=r")).build()
         }
         return Response.ok().entity("<html>\n" +

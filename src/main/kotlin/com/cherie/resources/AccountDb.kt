@@ -40,7 +40,7 @@ object AccountDb {
 
             create (Users, Roles, UserRole) //just create the tables in init
 
-            /*Roles.insert{
+            Roles.insert{
                 it[name] = "guest"
                 it[desc] = "default role given"
             }
@@ -50,7 +50,7 @@ object AccountDb {
                 it[desc] = "administrative role given"
             }
 
-            val saintPetersburgId = Cities.insert {
+            /*val saintPetersburgId = Cities.insert {
                 it[name] = "St. Petersburg"
             } get Cities.id
 

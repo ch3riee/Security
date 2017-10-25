@@ -22,7 +22,7 @@ class SessionDao{
     @GET
     @Path("get")
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("guest")
+    @RolesAllowed("admin")
     fun get( @Context req: HttpServletRequest, @QueryParam("key") key :String? ): Response {
         val session = req.getSession(false)
         var theJson = session.getAttribute(key!!.substring(0,1)) as String?
@@ -46,7 +46,7 @@ class SessionDao{
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("set")
-    @RolesAllowed("guest")
+    @RolesAllowed("admin")
     fun set(@QueryParam("key") key :String?, @Context req: HttpServletRequest, data: String?): Response {
         val session = req.getSession(false)
         val currObj = session.getAttribute(key!!.substring(0,1)) as String?

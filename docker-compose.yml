@@ -14,28 +14,24 @@ services:
 
   db-session:
     restart: always
-    image: sameersbn/postgresql:9.6-2
+    image: postgres
     ports:
       - "5432:5432"
     environment:
-      - DEBUG=false
-
-      - DB_USER=jetty
-      - DB_PASS=jettypass
-      - DB_NAME=session
+      - POSTGRES_USER=jetty
+      - POSTGRES_PASSWORD=jettypass
+      - POSTGRES_DB=session
     volumes:
       - /srv/docker/postgresql-session:/var/lib/postgresql-session
 
   db-account:
     restart: always
-    image: sameersbn/postgresql:9.6-2
+    image: postgres
     ports:
-      - "5432"
+      - "5433:5432"
     environment:
-      - DEBUG=false
-
-      - DB_USER=jetty
-      - DB_PASS=jettypass
-      - DB_NAME=account
+      - POSTGRES_USER=jetty
+      - POSTGRES_PASSWORD=jettypass
+      - POSTGRES_DB=account
     volumes:
       - /srv/docker/postgresql-account:/var/lib/postgresql-account
