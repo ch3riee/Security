@@ -1,22 +1,25 @@
-CREATE TABLE IF NOT EXISTS Users (id serial PRIMARY KEY, username VARCHAR(50) NOT NULL, pwd VARCHAR(50));
 
-CREATE TABLE IF NOT EXISTS Roles (id serial PRIMARY KEY, rolename VARCHAR(50) NOT NULL);
 
-CREATE TABLE IF NOT EXISTS UserRole (uid INT references Users(id), roleid INT references Roles(id));
+CREATE TABLE IF NOT EXISTS Users (id serial PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, pwd VARCHAR(50));
 
-CREATE TABLE IF NOT EXISTS Permissions (id serial PRIMARY KEY, operation VARCHAR(50) NOT NULL);
+CREATE TABLE IF NOT EXISTS Roles (id serial PRIMARY KEY, rolename VARCHAR(50) NOT NULL UNIQUE);
 
-CREATE TABLE IF NOT EXISTS RolePerm (pid INT references Permissions(id), roleid INT references Roles(id));
+CREATE TABLE IF NOT EXISTS UserRole (uid INT references Users(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE);
 
-INSERT INTO Roles(rolename) VALUES ('guest');
+CREATE TABLE IF NOT EXISTS Permissions (id serial PRIMARY KEY, operation VARCHAR(50) NOT NULL UNIQUE);
 
-INSERT INTO Roles(rolename) VALUES ('admin');
+CREATE TABLE IF NOT EXISTS RolePerm (pid INT references Permissions(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE);
 
-INSERT INTO Roles(rolename) VALUES ('poweruser');
+INSERT INTO Roles(rolename) VALUES ('guest'), ('admin'), ('poweruser');
 
-INSERT INTO Permissions(operation) VALUES ('user:create');
+--INSERT INTO Roles(rolename) VALUES ('admin');
 
-INSERT INTO Permissions(operation) VALUES ('user:modify');
+--INSERT INTO Roles(rolename) VALUES ('poweruser');
+
+INSERT INTO Permissions(operation) VALUES ('user:create'), ('user:modify'),('user:delete'), ('device:create'),('device:modify')
+ , ('device:delete'),('policy:create'),('policy:modify'), ('policy:delete')  ;
+
+/*INSERT INTO Permissions(operation) VALUES ('user:modify');
 
 INSERT INTO Permissions(operation) VALUES ('user:delete');
 
@@ -30,7 +33,7 @@ INSERT INTO Permissions(operation) VALUES ('policy:create');
 
 INSERT INTO Permissions(operation) VALUES ('policy:modify');
 
-INSERT INTO Permissions(operation) VALUES ('policy:delete');
+INSERT INTO Permissions(operation) VALUES ('policy:delete');*/
 
 WITH u1 AS (
    SELECT id FROM Permissions WHERE operation = 'user:create'

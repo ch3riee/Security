@@ -18,7 +18,6 @@ import javax.ws.rs.core.NewCookie
 class JwtResource{
 
     @GET
-    @RolesAllowed("guest")
     @Path("getJWT")
     fun getToken(@Context request: HttpServletRequest): Response{
         val session = request.getSession(false)
@@ -29,7 +28,6 @@ class JwtResource{
     }
 
     @GET
-    @RolesAllowed("guest")
     @Path("checkJWT")
     fun checkToken(@CookieParam("JwtToken") cookie: String): Response{
         var publicKey = (this::class.java.classLoader).getResource("pki/Java.key").readText().toByteArray()
