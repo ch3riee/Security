@@ -228,7 +228,7 @@ class Login{
                 "    Please proceed and utilize rest api endpoints\n" +
                 "    <p>\n" +
                 "    Here is an example endpoint: \n"+
-                "    <a href = \"http://127.0.0.1:8080/rest/teams/GoldenStateWarriors\n\">Example Endpoint</a>\n"+
+                "    <a href = \"http://127.0.0.1:8080/rest/hello\n\">Example Endpoint</a>\n"+
                 "    </p>\n" +
                 "    <a href=\"http://127.0.0.1:8080/rest/logout\n\">Click here</a> to logout!</a>\n" +
                 "    </p>\n" +
