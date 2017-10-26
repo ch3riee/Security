@@ -34,10 +34,7 @@ import org.eclipse.jetty.util.URIUtil
 import org.eclipse.jetty.util.log.Log
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.security.Credential
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import sun.security.rsa.RSAPrivateCrtKeyImpl
 import java.io.*
@@ -229,11 +226,14 @@ class CustomAuthenticator() : LoginAuthenticator() {
     }
 
     fun generateJWT(email: String, pwd: String?): String {
-        val roles = getRoles(email, pwd)
+        val (roles, perms) = getRolesPerms(email, pwd) as Pair<ArrayList<String>, ArrayList<String>>
         var privateKey = (this::class.java.classLoader).getResource("pki/Jetty.key").readText().toByteArray()
         privateKey = Base64.getDecoder().decode(privateKey)
         val mymap = HashMap<String, Any>()
         mymap.put("Roles", roles.toTypedArray())
+        mymap.put("Permissions", perms.toTypedArray())
+        //println("Roles: " + roles.toString())
+       // println("Perms: " + perms.toString())
         val jws = Jwts.builder().setClaims(mymap).setSubject(email).signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey)).compact()
         return jws
     }
@@ -316,11 +316,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
                 UserRole.select{
                     UserRole.uid.eq(currid)
-                }.forEach{
-                    Roles.select{
+                }.forEach {
+                    Roles.select {
                         Roles.id.eq(it[UserRole.roleid])
-                    }.forEach{
-                        roles.add(it[Roles.name])
+                    }.forEach {
+                        roles.add(it[Roles.name]) //gives us list of role names to save in the subject
                     }
                 }
             }
@@ -328,6 +328,47 @@ class CustomAuthenticator() : LoginAuthenticator() {
         return roles
 
     }
+
+    fun getRolesPerms(user_name: String, pwd: String?): Pair<ArrayList<String>, ArrayList<String>> {
+        var roles = ArrayList<String>()
+        var permissions = HashSet<String>()
+        var roleids = ArrayList<Int>()
+        val ic = InitialContext()
+        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
+        Database.connect(myDatasource)
+        transaction{
+                val curruser = Users.select {
+                    Users.username.eq(user_name)
+                }
+                //just need to grab the role information
+                var currid: Int = 0
+                curruser.forEach{
+                    currid = it[Users.id]
+                }
+
+                UserRole.select{
+                    UserRole.uid.eq(currid)
+                }.forEach{
+                    Roles.select{
+                        Roles.id.eq(it[UserRole.roleid])
+                    }.forEach{
+                        roles.add(it[Roles.name]) //gives us list of role names to save in the subject
+                        roleids.add(it[Roles.id]) //gives us list of role ids so that we can find matching permissions
+                    }
+                }
+
+                RolePerm.select{ RolePerm.roleid.inList(roleids)}.forEach{
+                    Permissions.select{
+                        Permissions.id.eq(it[RolePerm.pid])
+                    }.forEach{
+                        permissions.add(it[Permissions.operation])
+                    }
+                }
+            }
+        return Pair(roles, ArrayList<String>(permissions))
+
+    }
+
 
 
     /* ------------------------------------------------------------ */
@@ -555,6 +596,14 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                     dispatcher.forward(FormRequest(request), FormResponse(response))
                 } else {
+                    val regex = Regex("/login(?=/|$)")
+                    val match = regex.containsMatchIn(uri)
+                    if (match != false)
+                    {
+                        //we do not want to redirect or send the challenge
+                        return Authentication.NOT_CHECKED
+
+                    }
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                 }

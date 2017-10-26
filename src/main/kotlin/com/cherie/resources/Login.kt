@@ -71,33 +71,7 @@ class Login{
     @GET
     @Path("signup")
     @Produces("text/html")
-    fun signupLocal(@QueryParam("redir") message: String?): Response{
-        if(message != null){
-            return Response.status(200).entity("<html>\n" +
-                    "  <head>\n" +
-                    " <title> SignUp Form </title>" +
-                    " <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">" +
-                    "  </head>\n" +
-                    "  <body>\n" +
-                    " <p>" +
-                    " SignUp Error: Email already exists. Please sign up with a new email or login to your account!!" +
-                    "</p" +
-                    "  <br />" +
-                    "<form method=\"post\" action=\"http://127.0.0.1:8080/rest/login/signupcallback\">" +
-                    "<p>" +
-                    " Please enter in email address that will be used as your username" +
-                    "</p>" +
-                    "<p>" +
-                    "Email: <input type=\"email\" name=\"j_username\"/>" +
-                    "</p>" +
-                    "<p>" +
-                    "Password : <input type=\"password\" name=\"j_password\" />" +
-                    "</p>" +
-                    "<input type=\"submit\" value=\"SignUp\" />" +
-                    "</form>" +
-                    "  </body>\n" +
-                    "</html>").build()
-        }
+    fun signupLocal(): Response{
         return Response.status(200).entity("<html>\n" +
                 "  <head>\n" +
                 " <title> SignUp Form </title>" +
@@ -120,8 +94,6 @@ class Login{
                 "  </body>\n" +
                 "</html>").build()
     }
-
-
 
     @GET
     @Path("ssocallback")
@@ -146,8 +118,9 @@ class Login{
             val c = Users.select {
                 Users.username.eq(email)
             }.count()
-            if(c != 0)
+            if(c > 0)
             {
+                println("should be here")
                 exists = true
             }
             else{
@@ -159,8 +132,12 @@ class Login{
 
                 //create a new row in UserRole table
                 //find the role id for admin
+                val mylist = ArrayList<String>()
+                mylist.add("admin")
+                mylist.add("guest")
+                mylist.add("poweruser")
                 Roles.select{
-                    Roles.name.eq("admin")
+                    Roles.name.inList(mylist)
                 }.forEach{
                     val adminid = it[Roles.id]
                     UserRole.insert{
@@ -168,15 +145,42 @@ class Login{
                         it[roleid] = adminid
                     }
                 }
-            }
-            /*for (user in Users.selectAll()) {
-                println("${user[Users.id]}: ${user[Users.username]} : ${user[Users.password]}")
-            }*/
 
+            }
+          /*  for (user in Users.selectAll()) {
+                println("${user[Users.id]}: ${user[Users.username]} : ${user[Users.password]}")
+            }
+            for (role in Roles.selectAll()) {
+                println("${role[Roles.id]}: ${role[Roles.name]}")
+            }*/
         }
         if(exists == true)
         {
-           return Response.temporaryRedirect(URI("http://127.0.0.1:8080/rest/login/signup?redir=r")).build()
+            return Response.status(200).entity("<html>\n" +
+                "  <head>\n" +
+                " <title> SignUp Form </title>" +
+                " <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">" +
+                "  </head>\n" +
+                "  <body>\n" +
+                " <p>" +
+                " SignUp Error: Email already exists. Please sign up with a new email or login to your account!!" +
+                "</p" +
+                "  <br />" +
+                "<form method=\"post\" action=\"http://127.0.0.1:8080/rest/login/signupcallback\">" +
+                "<p>" +
+                " Please enter in email address that will be used as your username" +
+                "</p>" +
+                "<p>" +
+                "Email: <input type=\"email\" name=\"j_username\"/>" +
+                "</p>" +
+                "<p>" +
+                "Password : <input type=\"password\" name=\"j_password\" />" +
+                "</p>" +
+                "<input type=\"submit\" value=\"SignUp\" />" +
+                "</form>" +
+                "  </body>\n" +
+                "</html>").build()
+
         }
         return Response.ok().entity("<html>\n" +
                 "  <head>\n" +

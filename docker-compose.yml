@@ -34,4 +34,5 @@ services:
       - POSTGRES_PASSWORD=jettypass
       - POSTGRES_DB=account
     volumes:
+      - ./src/main/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - /srv/docker/postgresql-account:/var/lib/postgresql-account

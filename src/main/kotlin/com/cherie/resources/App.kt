@@ -87,7 +87,7 @@ object App{
         val jndiName = "jdbc/userStore"
         val mydatasource = Resource("java:comp/env/" + jndiName, simpleDataSource)
         server.setAttribute("userStore", mydatasource)
-        AccountDb.init()
+        //AccountDb.init()
 
         /*val sessionDataSource = PGSimpleDataSource()
         sessionDataSource.serverName = "db-session"

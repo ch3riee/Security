@@ -1,11 +1,6 @@
 package com.cherie.resources
 
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.SchemaUtils.create
-import javax.naming.InitialContext
-import javax.sql.DataSource
-
 
 
 
@@ -19,7 +14,6 @@ object Users : Table() {
 object Roles : Table() {
     val id = integer("id").autoIncrement("roles_seq").primaryKey() // Column<Int>
     val name = varchar("rolename", 50) // Column<String>
-    val desc = varchar("description", 50)
 }
 
 object UserRole : Table() {
@@ -27,11 +21,21 @@ object UserRole : Table() {
     val roleid = (integer("roleid") references Roles.id)
 }
 
+object Permissions: Table(){
+    val id = integer("id").autoIncrement().primaryKey()
+    val operation = varchar("operation", 50)
+}
+
+object RolePerm: Table(){
+    val pid = (integer("pid") references Permissions.id)
+    val roleid = (integer("roleid") references Roles.id)
+}
+
 
 object AccountDb {
 
 
-    fun init(){
+    /*fun init(){
         val ic = InitialContext()
         val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
         Database.connect(myDatasource)
@@ -71,7 +75,7 @@ object AccountDb {
 
 
 
-        }
+        }*/
     }
 
-}
+
