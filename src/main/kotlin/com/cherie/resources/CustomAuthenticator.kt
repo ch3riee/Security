@@ -12,13 +12,15 @@ import javax.servlet.http.HttpServletRequestWrapper
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletResponseWrapper
 import javax.servlet.http.HttpSession
+import javax.naming.InitialContext
+import javax.security.auth.Subject
+import javax.sql.DataSource
 
 import org.eclipse.jetty.http.HttpHeader
 import org.eclipse.jetty.http.HttpHeaderValue
 import org.eclipse.jetty.http.HttpMethod
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.http.MimeTypes
-import org.eclipse.jetty.security.AbstractLoginService
 import org.eclipse.jetty.security.Authenticator
 import org.eclipse.jetty.security.ServerAuthException
 import org.eclipse.jetty.security.UserAuthentication
@@ -28,31 +30,20 @@ import org.eclipse.jetty.server.Authentication
 import org.eclipse.jetty.server.Authentication.User
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.UserIdentity
-import org.eclipse.jetty.util.ClassLoadingObjectInputStream
 import org.eclipse.jetty.util.MultiMap
 import org.eclipse.jetty.util.URIUtil
 import org.eclipse.jetty.util.log.Log
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.security.Credential
+
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+
 import sun.security.rsa.RSAPrivateCrtKeyImpl
 import java.io.*
-import java.net.URI
-import java.nio.charset.Charset
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.security.KeyFactory
-import java.security.KeyPairGenerator
 import java.security.Principal
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
-import java.sql.Connection
-import java.sql.SQLException
 import java.util.*
-import javax.naming.InitialContext
-import javax.security.auth.Subject
-import javax.sql.DataSource
+
 
 /**
  * FORM Authenticator.
@@ -156,86 +147,58 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
     /* ------------------------------------------------------------ */
     override fun login(username: String, password: Any, request: ServletRequest): UserIdentity? {
-        //this is the most important to override. Called by login down below
-        //val user = super.login(username, password, request)
-        //this^ calls the loginservice login method
-        //need to create a UserIdentity and create database connection and update if user.
         if (username == null)
             return null
-        //Get sso token and then subsequently get the user email as username
+
         var user_email: String = username
-        var authenticated: Boolean = false
-        if(password.equals("")) {
+        var authenticated = false
+        if((password as String).isEmpty()) {
+            //Get sso token and then subsequently get the user email as username
             user_email = ssoHelper(username)
             authenticated = true
         }
         else{
             //this is a local authentication attempt, check database to see if credentials are correct
-            val ic = InitialContext()
-            val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-            Database.connect(myDatasource)
+            Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
             transaction{
-                val curruser = Users.select {
+                val currUser = Users.select {
                     Users.username.eq(user_email)
                 }
-                if (curruser.count() == 1)
+                if (currUser.count() == 1)
                 {
-                    var cred: String? = null
-                    //in this case we do not create a new entry unless was on the signup page.
-                    //for sso we create one if not in the db yet.
-                    curruser.forEach{
-                        cred = it[Users.password]
+                    currUser.forEach{
+                        if(it[Users.password].equals(password)) authenticated = true
                     }
-                    if(cred!!.equals(password))
-                    {
-                        authenticated = true
-                    }
-
                 }
             }
         }
-        if(authenticated == false)
-        {
-           return null //was not authenticated for local login
-        }
+        if(!authenticated) return null
+
         //if we made it this far than we have authenticated both sso and local login
-        val user = createUserIdentity(user_email, password as String) as CustomUserIdentity
-        if (user != null) {
+        val user = createUserIdentity(user_email, password) as CustomUserIdentity?
+        user?.let {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            val jwt = generateJWT(user_email, password)
-            session.setAttribute("JwtToken", jwt)
-            val map = HashMap<String, Any>()
-            val m = HashMap<String, Any>()
-            map.put("cache", cached)
-            map.put("hi", "hello")
-
-            val baos = ByteArrayOutputStream()
-            val oos = ObjectOutputStream(baos)
-            oos.writeObject(cached)
-            oos.flush()
-            val bytes = baos.toByteArray()
-
-            val bais = ByteArrayInputStream(bytes)
-            val ois = ClassLoadingObjectInputStream(bais)
-            val obj = ois.readObject()
-
+            session.setAttribute("JwtToken", generateJWT(user_email))
         }
         return user
     }
 
-    fun generateJWT(email: String, pwd: String?): String {
-        val (roles, perms) = getRolesPerms(email, pwd) as Pair<ArrayList<String>, ArrayList<String>>
-        var privateKey = (this::class.java.classLoader).getResource("pki/Jetty.key").readText().toByteArray()
+    fun generateJWT(email: String): String {
+        val (roles, perms) = getRolesPerms(email)
+        var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
+                                                       .readText()
+                                                       .toByteArray()
         privateKey = Base64.getDecoder().decode(privateKey)
-        val mymap = HashMap<String, Any>()
-        mymap.put("Roles", roles.toTypedArray())
-        mymap.put("Permissions", perms.toTypedArray())
-        //println("Roles: " + roles.toString())
-       // println("Perms: " + perms.toString())
-        val jws = Jwts.builder().setClaims(mymap).setSubject(email).signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey)).compact()
-        return jws
+        val myMap = HashMap<String, Any>()
+        myMap.put("Roles", roles.toTypedArray())
+        myMap.put("Permissions", perms.toTypedArray())
+        return Jwts.builder()
+                      .setClaims(myMap)
+                      .setSubject(email)
+                      .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
+                      .compact()
     }
 
     fun ssoHelper(code: String): String{
@@ -245,125 +208,84 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 .queryString("client_secret", "9c445d6a689f8c5b94ca9a9d5669a19abe86feec")
                 .queryString("code", code)
                 .asJson()
-        val obj = jsonResponse.getBody().getObject()
-        val a_token: String = obj.getString("access_token")
+        val obj = jsonResponse.body.getObject()
         val userResponse = Unirest.get("https://api.github.com/user/emails")
                 .header("accept", "application/json")
-                .queryString("access_token", a_token)
+                .queryString("access_token", obj.getString("access_token"))
                 .asJson()
-        val userArray = userResponse.getBody().getArray()
-        val user_email = userArray.getJSONObject(0).getString("email")
-        return user_email
+        return userResponse.body.getArray().getJSONObject(0).getString("email")
     }
 
 
     fun createUserIdentity(user_name: String, pwd: String?): UserIdentity? {
-        //code for accessing database
-
         val cred = Credential.getCredential(pwd)
-        val userPrincipal = UserPrincipal(user_name, cred) //nul for credential?
-        if (userPrincipal != null) {
-            //safe to load the roles
-            val subject = Subject()
-            subject.principals.add(userPrincipal)
-            subject.privateCredentials.add(cred)
-            val roles = getRoles(user_name, pwd)
-            if (roles != null)
-                for (role in roles!!){
-                    subject.principals.add(RolePrincipal(role))}
-            subject.setReadOnly()
-            return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
-        }
-        //should not get here
-        return null
+        val userPrincipal = UserPrincipal(user_name, cred)
+        val subject = Subject()
+        subject.principals.add(userPrincipal)
+        subject.privateCredentials.add(cred)
+        val roles = getRoles(user_name, pwd)
+        for (role in roles) {
+               subject.principals.add(RolePrincipal(role))
+            }
+        subject.setReadOnly()
+        return _identityService.newUserIdentity(subject, userPrincipal, roles.toTypedArray())
     }
 
     fun getRoles(user_name: String, pwd: String?): ArrayList<String>{
-        var roles = ArrayList<String>()
-        val ic = InitialContext()
-        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-        Database.connect(myDatasource)
+        val roles = ArrayList<String>()
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         transaction{
-            val curruser = Users.select {
+            var currId = 0
+            Users.select {
                 Users.username.eq(user_name)
+            }.forEach{
+                currId = it[Users.id]
             }
-            if (curruser.count() < 1)
-            {
-                //there is no entry yet create a new row in users table
-                val userid = Users.insert{
-                    it[username] = user_name
-                    it[password] = pwd
-                } get Users.id
 
-                //find the role id for admin
-                Roles.select{
-                    Roles.name.eq("admin")
-                }.forEach{
-                    val guestid = it[Roles.id]
-                    UserRole.insert{
-                        it[uid] = userid
-                        it[roleid] = guestid
-                    }
-                }
-
-            }
-            else{
-                //just need to grab the role information
-                var currid: Int = 0
-                curruser.forEach{
-                    currid = it[Users.id]
-                }
-
-                UserRole.select{
-                    UserRole.uid.eq(currid)
+            UserRole.select{
+                UserRole.uid.eq(currId)
+            }.forEach {
+                Roles.select {
+                    Roles.id.eq(it[UserRole.roleid])
                 }.forEach {
-                    Roles.select {
-                        Roles.id.eq(it[UserRole.roleid])
-                    }.forEach {
-                        roles.add(it[Roles.name]) //gives us list of role names to save in the subject
-                    }
+                    roles.add(it[Roles.name])
                 }
             }
         }
         return roles
-
     }
 
-    fun getRolesPerms(user_name: String, pwd: String?): Pair<ArrayList<String>, ArrayList<String>> {
-        var roles = ArrayList<String>()
-        var permissions = HashSet<String>()
-        var roleids = ArrayList<Int>()
-        val ic = InitialContext()
-        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-        Database.connect(myDatasource)
+    fun getRolesPerms(user_name: String): Pair<ArrayList<String>, ArrayList<String>> {
+        val roles = ArrayList<String>()
+        val permissions = HashSet<String>()
+        val roleIds = ArrayList<Int>()
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         transaction{
-                val curruser = Users.select {
-                    Users.username.eq(user_name)
-                }
-                //just need to grab the role information
-                var currid: Int = 0
-                curruser.forEach{
-                    currid = it[Users.id]
-                }
+            var currId = 0
+            Users.select {
+                Users.username.eq(user_name)
+            }.forEach{
+                currId = it[Users.id]
+            }
 
-                UserRole.select{
-                    UserRole.uid.eq(currid)
+            UserRole.select{
+                UserRole.uid.eq(currId)
+            }.forEach{
+                Roles.select{
+                    Roles.id.eq(it[UserRole.roleid])
                 }.forEach{
-                    Roles.select{
-                        Roles.id.eq(it[UserRole.roleid])
-                    }.forEach{
-                        roles.add(it[Roles.name]) //gives us list of role names to save in the subject
-                        roleids.add(it[Roles.id]) //gives us list of role ids so that we can find matching permissions
-                    }
+                    roles.add(it[Roles.name]) //gives us list of role names to save in the subject
+                    roleIds.add(it[Roles.id]) //gives us list of role ids so that we can find matching permissions
                 }
+            }
 
-                RolePerm.select{ RolePerm.roleid.inList(roleids)}.forEach{
-                    Permissions.select{
-                        Permissions.id.eq(it[RolePerm.pid])
-                    }.forEach{
-                        permissions.add(it[Permissions.operation])
-                    }
+            RolePerm.select{ RolePerm.roleid.inList(roleIds)}.forEach{
+                Permissions.select{
+                    Permissions.id.eq(it[RolePerm.pid])
+                }.forEach{
+                    permissions.add(it[Permissions.operation])
                 }
+            }
             }
         return Pair(roles, ArrayList<String>(permissions))
 
@@ -433,10 +355,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (session == null || session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) == null)
             return  //not authenticated yetv
         val juri = session.getAttribute(__J_URI) as String?
-        if (juri == null || juri.length == 0)
+        if (juri == null || juri.isEmpty())
             return  //no original uri saved
         val method = session.getAttribute(__J_METHOD) as String
-        if (method == null || method.length == 0)
+        if (method == null || method.isEmpty())
             return  //didn't save original request method
 
         val buf = httpRequest.requestURL
@@ -447,7 +369,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
             return  //this request is not for the same url as the original
 
         //restore the original request's method on this request
-        if (LOG.isDebugEnabled) LOG.debug("Restoring original method {} for {} with method {}", method, juri, httpRequest.method)
+        if (LOG.isDebugEnabled) LOG.debug("Restoring original" +
+                "method {} for {} with method {}", method, juri, httpRequest.method)
         val base_request = Request.getBaseRequest(request!!)
         base_request.method = method
     }
@@ -463,7 +386,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (uri == null)
             uri = URIUtil.SLASH
 
-        if (isLoginOrErrorPage(URIUtil.addPaths(request.servletPath, request.pathInfo)) && !DeferredAuthentication.isDeferred(response))
+        if (isLoginOrErrorPage(URIUtil.addPaths(request.servletPath, request.pathInfo)) &&
+                !DeferredAuthentication.isDeferred(response))
             return DeferredAuthentication(this)
 
         var session: HttpSession? = request.getSession(true)
@@ -506,13 +430,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         println(" is from cookie: " + request.isRequestedSessionIdFromCookie())
         println(session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))*/
 
-        //if unable to create a session, user must be
-        //unauthenticated
-        if (session == null)
-        {
-            return Authentication.UNAUTHENTICATED
-        }
-
+        //if unable to create a session, user must be unauthenticated
+        if (session == null) return Authentication.UNAUTHENTICATED
 
         try {
             // Handle a request for authentication. )
@@ -524,19 +443,20 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 if (user != null) {
                     // Redirect to original request
                     var nuri: String? = "hi"
-                    var form_auth: CustomAuthentication = CustomAuthentication(authMethod, user)
+                    var form_auth= CustomAuthentication(authMethod, user)
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
 
-                        if (nuri == null || nuri!!.length == 0 || nuri!!.contains("http://127.0.0.1:8080/rest/login/") ) {
+                        if (nuri == null || nuri!!.isEmpty() || nuri!!.contains("http://127.0.0.1:8080/rest/login/") ) {
                             nuri = "http://127.0.0.1:8080/rest/login/success"
-                            if (nuri!!.length == 0)
+                            if (nuri!!.isEmpty())
                                 nuri = URIUtil.SLASH
                         }
                     }
 
                     response.setContentLength(0)
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                        (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
                     return form_auth
                 }
@@ -553,8 +473,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                     dispatcher.forward(FormRequest(request), FormResponse(response))
                 } else {
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                        (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
+                    base_response.sendRedirect(redirectCode,
+                            response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                 }
 
                 return Authentication.SEND_FAILURE
@@ -567,19 +489,21 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 session = request.getSession(false)
                 if (user != null) {
                     // Redirect to original request
-                    var nuri: String? = "hi"
-                    var form_auth: CustomAuthentication = CustomAuthentication(authMethod, user)
+                    var nuri: String? = null
+                    var form_auth = CustomAuthentication(authMethod, user)
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
-                        if (nuri == null || nuri!!.length == 0 || nuri!!.contains("http://127.0.0.1:8080/rest/login/")) {
+                        if (nuri == null || nuri!!.isEmpty() ||
+                                nuri!!.contains("http://127.0.0.1:8080/rest/login/")) {
                             nuri = "http://127.0.0.1:8080/rest/login/success"
-                            if (nuri!!.length == 0)
+                            if (nuri!!.isEmpty())
                                 nuri = URIUtil.SLASH
                         }
                     }
 
                     response.setContentLength(0)
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
                     return form_auth
                 }
@@ -596,16 +520,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                     dispatcher.forward(FormRequest(request), FormResponse(response))
                 } else {
-                    val regex = Regex("/login(?=/|$)")
-                    val match = regex.containsMatchIn(uri)
-                    if (match != false)
-                    {
-                        //we do not want to redirect or send the challenge
-                        return Authentication.NOT_CHECKED
-
-                    }
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                    base_response.sendRedirect(redirectCode,
+                            response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                 }
 
                 return Authentication.SEND_FAILURE
@@ -613,7 +531,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
             }//end of local login sequence
 
             // Look for cached authentication
-            val authentication = session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
+            val authentication = session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
                 // Has authentication been revoked?
                 if (authentication is Authentication.User &&
@@ -653,7 +571,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     session!!.setAttribute(__J_URI, buf.toString())
                     session!!.setAttribute(__J_METHOD, request.method)
 
-                    if (MimeTypes.Type.FORM_ENCODED.`is`(req.getContentType()) && HttpMethod.POST.`is`(request.method)) {
+                    if (MimeTypes.Type.FORM_ENCODED.`is`(req.getContentType())
+                            && HttpMethod.POST.`is`(request.method)) {
                         val formParameters = MultiMap<String>()
                         base_request.extractFormParameters(formParameters)
                         session!!.setAttribute(__J_POST, formParameters)
@@ -678,10 +597,13 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
                 }
                 LOG.debug("challenge {}->{}", session.id, _formLoginPage)
-                val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version) HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                base_response.sendRedirect(redirectCode, response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
+                val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                    HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                base_response.sendRedirect(redirectCode,
+                        response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
             }
             return Authentication.SEND_CONTINUE
+            //this ends the try block
         } catch (e: IOException) {
             throw ServerAuthException(e)
         } catch (e: ServletException) {
@@ -723,7 +645,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
     /* ------------------------------------------------------------ */
     @Throws(ServerAuthException::class)
-    override fun secureResponse(req: ServletRequest, res: ServletResponse, mandatory: Boolean, validatedUser: User?): Boolean {
+    override fun secureResponse(req: ServletRequest, res: ServletResponse,
+                                mandatory: Boolean, validatedUser: User?): Boolean {
         return true
     }
 
@@ -744,7 +667,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         }
 
         override fun getHeaders(name: String): Enumeration<String> {
-            return if (name.toLowerCase(Locale.ENGLISH).startsWith("if-")) Collections.enumeration(emptyList()) else super.getHeaders(name)
+            return if (name.toLowerCase(Locale.ENGLISH).startsWith("if-"))
+                Collections.enumeration(emptyList()) else super.getHeaders(name)
         }
     }
 
@@ -787,7 +711,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
      * Subsequent requests from the same user are authenticated by the presents
      * of a [SessionAuthentication] instance in their session.
      */
-    class CustomAuthentication(method: String, userIdentity: UserIdentity) : UserAuthentication(method, userIdentity), Authentication.ResponseSent {
+    class CustomAuthentication(method: String, userIdentity: UserIdentity):
+            UserAuthentication(method, userIdentity), Authentication.ResponseSent {
 
         override fun toString(): String {
             return "Form" + super.toString()

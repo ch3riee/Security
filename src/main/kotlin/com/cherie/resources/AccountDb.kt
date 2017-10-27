@@ -32,50 +32,6 @@ object RolePerm: Table(){
 }
 
 
-object AccountDb {
 
-
-    /*fun init(){
-        val ic = InitialContext()
-        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-        Database.connect(myDatasource)
-
-        transaction {
-
-            create (Users, Roles, UserRole) //just create the tables in init
-
-            Roles.insert{
-                it[name] = "guest"
-                it[desc] = "default role given"
-            }
-
-            Roles.insert{
-                it[name] = "admin"
-                it[desc] = "administrative role given"
-            }
-
-            /*val saintPetersburgId = Cities.insert {
-                it[name] = "St. Petersburg"
-            } get Cities.id
-
-            val munichId = Cities.insert {
-                it[name] = "Munich"
-            } get Cities.id
-
-            Cities.insert {
-                it[name] = "Prague"
-            }
-
-            Users.insert{
-                it[username] = "cherie"
-                it[password] = "mypass"
-            }*/
-
-
-
-
-
-        }*/
-    }
 
 

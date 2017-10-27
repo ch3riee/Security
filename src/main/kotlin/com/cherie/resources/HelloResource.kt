@@ -6,11 +6,12 @@ import javax.ws.rs.core.Response
 import javax.ws.rs.*
 
 @Path("hello")
-class TeamResource{
+class HelloResource {
 
     @GET
     @PermitAll
     fun getHello(): Response{
+        //this resource is purely for testing purposes
         return Response.status(Status.OK).type("text/plain").entity("HELLO WORLD").build()
     }
 

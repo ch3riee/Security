@@ -2,7 +2,6 @@ package com.cherie.resources
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import javax.annotation.security.RolesAllowed
 import javax.naming.InitialContext
@@ -19,8 +18,10 @@ import javax.ws.rs.core.Response
 class AdminResource {
 
    @GET
+   @Path("hello")
    @Produces(MediaType.TEXT_PLAIN)
    fun getHello(): Response{
+       //for testing purposes
        return Response.ok().entity("Hello from the admin side").build()
    }
 
@@ -28,31 +29,18 @@ class AdminResource {
     @Path("delete")
     @Produces(MediaType.TEXT_PLAIN)
     fun delete(@QueryParam("name") name: String?, @QueryParam("table") table: String?): Response{
+        var message= "Successfully deleted!"
         val ic = InitialContext()
-        val myDatasource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-        Database.connect(myDatasource)
+        val myDataSource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
+        Database.connect(myDataSource)
         transaction{
-            if(table.equals("Users"))
-            {
-                Users.deleteWhere{Users.username eq name}
-            }
-            else if(table.equals("Roles"))
-            {
-                Roles.deleteWhere{Roles.name eq name}
-            }
-            else{
-                Permissions.deleteWhere{Permissions.operation eq name}
-            }
-            for (user in Users.selectAll()) {
-                println("${user[Users.id]}: ${user[Users.username]} : ${user[Users.password]}")
-            }
-            for (role in Roles.selectAll()) {
-                println("${role[Roles.id]}: ${role[Roles.name]}")
-            }
-            for (perm in Permissions.selectAll()){
-                println("${perm[Permissions.id]}: ${perm[Permissions.operation]}")
+            when(table) {
+                "Users" -> Users.deleteWhere{Users.username eq name}
+                "Roles" -> Roles.deleteWhere{Roles.name eq name}
+                "Permissions" -> Permissions.deleteWhere{Permissions.operation eq name}
+                 else -> message = "No such table exists in the DB"
             }
         }
-        return Response.ok().type("text/plain").entity("Successfully deleted").build()
+        return Response.ok().type("text/plain").entity(message).build()
     }
 }
