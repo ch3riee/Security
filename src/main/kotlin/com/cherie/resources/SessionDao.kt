@@ -61,7 +61,7 @@ class SessionDao{
         var curr: ObjectNode = theRoot
         var i = 1
         while(i < arr.size - 1){
-            var temp = curr.get(arr[i])
+            val temp = curr.get(arr[i])
             //if does not exist then we create
             curr = if(temp == null) curr.putObject(arr[i]) else (temp as ObjectNode)
             i += 1
