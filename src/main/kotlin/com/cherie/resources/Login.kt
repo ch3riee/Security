@@ -29,17 +29,17 @@ class Login{
                 "    <p>\n" +
                 "      To login via github, please use this link:\n" +
                 "      <a href=\"https://github.com/login/oauth/authorize?redirect_uri=" +
-                "      http://127.0.0.1:8080/rest/login/ssocallback&scope=user:email" +
+                "      /rest/login/ssocallback&scope=user:email" +
                 "      &client_id=c1371dc4d42722495100\n\">Click here</a> to login via SSO!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
                 "      To login via application, please use this link:\n" +
-                "      <a href=\"http://127.0.0.1:8080/rest/login/local\n\">Click here" +
+                "      <a href=\"/rest/login/local\n\">Click here" +
                 "      </a> to login locally!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
                 "      To signup via application, please use the below link\n" +
-                "      <a href=\"http://127.0.0.1:8080/rest/login/signup\n\"> " +
+                "      <a href=\"/rest/login/signup\n\"> " +
                 "      Click here </a> to signup for application!</a>\n" +
                 "    </p>\n" +
                 "  </body>\n" +
@@ -57,7 +57,7 @@ class Login{
                 " </head>\n" +
                 " <body>\n" +
                 "   <br />" +
-                "   <form method=\"post\" action=\"http://127.0.0.1:8080/rest/login/localcallback\">" +
+                "   <form method=\"post\" action=\"/rest/login/localcallback\">" +
                 "      <p>" +
                 "        Email: <input type=\"email\" name=\"j_username\"/>" +
                 "      </p>" +
@@ -81,7 +81,7 @@ class Login{
                 " </head>\n" +
                 " <body>\n" +
                 "   <br />" +
-                "   <form method=\"post\" action=\"http://127.0.0.1:8080/rest/login/signupcallback\">" +
+                "   <form method=\"post\" action=\"/rest/login/signupcallback\">" +
                 "     <p>" +
                 "       Please enter in email address that will be used as your username" +
                 "     </p>" +
@@ -161,7 +161,7 @@ class Login{
                 "     Error: Email already exists. Please pick different email or login!!" +
                 "   </p" +
                 "   <br />" +
-                "   <form method=\"post\" action=\"http://127.0.0.1:8080/rest/login/signupcallback\">" +
+                "   <form method=\"post\" action=\"/rest/login/signupcallback\">" +
                 "     <p>" +
                 "       Please enter in email address that will be used as your username" +
                 "     </p>" +
@@ -186,7 +186,7 @@ class Login{
                 "    <p>\n" +
                 "      Please proceed to login page via link below and login :)\n" +
                 "    <p>\n" +
-                "      <a href = \"http://127.0.0.1:8080/rest/login/local\n\">Login Page</a>\n"+
+                "      <a href = \"/rest/login/local\n\">Login Page</a>\n"+
                 "    </p>\n" +
                 "  </body>\n" +
                 "</html>").build()
@@ -222,9 +222,9 @@ class Login{
                 "      Please proceed and utilize rest api endpoints\n" +
                 "    <p>\n" +
                 "      Here is an example endpoint: \n"+
-                "      <a href = \"http://127.0.0.1:8080/rest/hello\n\">Example Endpoint</a>\n"+
+                "      <a href = \"/rest/hello\n\">Example Endpoint</a>\n"+
                 "    </p>\n" +
-                "      <a href=\"http://127.0.0.1:8080/rest/logout\n\">Click here</a> to logout!</a>\n" +
+                "      <a href=\"/rest/logout\n\">Click here</a> to logout!</a>\n" +
                 "    </p>\n" +
                 "  </body>\n" +
                 "</html>").build()

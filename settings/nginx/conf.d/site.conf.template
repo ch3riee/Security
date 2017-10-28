@@ -1,0 +1,34 @@
+server {
+
+    listen 80 ;
+
+    location ~ /rest/login* {
+        internal;
+        proxy_pass            http://srv-java-users:8080 ;
+    }
+
+    location ~ /rest/session* {
+        internal ;
+        proxy_pass            http://srv-java-users:8080 ;
+        proxy_set_header      X-Original-URI $request_uri ;
+    }
+
+    location ~ /rest/jwt* {
+        internal ;
+        proxy_pass            http://srv-java-users:8080 ;
+    }
+
+    location ~ /rest/data* {
+        internal ;
+        proxy_pass            http://srv-java-users:8080 ;
+    }
+
+    location ~ / {
+        if ($http_cookie ~ "JwtToken") {
+           rewrite ^(.*)$ $1 ;
+        }
+
+        rewrite ^(.*)$ /rest/login ;
+    }
+
+}

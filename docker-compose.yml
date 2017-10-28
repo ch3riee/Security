@@ -1,12 +1,22 @@
 version: '3'
 services:
   web:
+    image: nginx
+    volumes:
+     - ./settings/nginx/conf.d:/etc/nginx/conf.d
+    ports:
+     - "8080:80"
+    depends_on:
+      - srv-java-users
+    command: /bin/bash -c "cp -f /etc/nginx/conf.d/site.conf.template /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+  srv-java-users:
     build: .
     ports:
-     - "8080:8080"
+     - "8080"
     depends_on:
-        - db-session
-        - db-account
+      - db-session
+      - db-account
     volumes:
       - /home/cherie/IdeaProjects/rest:/app
     entrypoint: ./gradlew clean run
@@ -16,7 +26,7 @@ services:
     restart: always
     image: postgres
     ports:
-      - "5432:5432"
+      - "5432"
     environment:
       - POSTGRES_USER=jetty
       - POSTGRES_PASSWORD=jettypass
@@ -28,11 +38,13 @@ services:
     restart: always
     image: postgres
     ports:
-      - "5433:5432"
+      - "5432"
     environment:
       - POSTGRES_USER=jetty
       - POSTGRES_PASSWORD=jettypass
       - POSTGRES_DB=account
     volumes:
-      - ./src/main/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./settings/postgre/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - /srv/docker/postgresql-account:/var/lib/postgresql-account
+
+
