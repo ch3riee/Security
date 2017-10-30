@@ -1,7 +1,6 @@
 package com.cherie.resources
 
 import org.eclipse.jetty.servlet.ServletContextHandler
-import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.ServletHolder
 import org.glassfish.jersey.servlet.ServletContainer
 import org.glassfish.jersey.server.ResourceConfig
@@ -10,6 +9,7 @@ import org.eclipse.jetty.security.HashLoginService
 import org.eclipse.jetty.server.session.*
 import org.postgresql.ds.PGSimpleDataSource
 import org.eclipse.jetty.plus.jndi.Resource
+import org.eclipse.jetty.server.*
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature
 import org.glassfish.jersey.jackson.JacksonFeature
 
@@ -22,7 +22,18 @@ object App{
         config.register(JacksonFeature::class.java)
 
         val servlet = ServletHolder(ServletContainer(config))
-        val server = Server(8080)
+        val server = Server()
+
+        /*for to be used behind Nginx... (mostly for redirect)*/
+        val http_config = HttpConfiguration()
+        http_config.outputBufferSize = 32768
+        http_config.addCustomizer(ForwardedRequestCustomizer())
+        val http = ServerConnector(server, HttpConnectionFactory(http_config))
+        http.port = 8081
+        http.idleTimeout = 30000
+        server.addConnector(http)
+        /*----------------------------------------------------*/
+
         val context = ServletContextHandler(server, "/")
         context.addServlet(servlet, "/rest/*")
 
@@ -40,26 +51,6 @@ object App{
         context.sessionHandler = sessionManager
         val csh = ConstraintSecurityHandler()
         context.securityHandler = csh
-
-
-//        val constraint = Constraint()
-//        constraint.name = "auth"
-//        constraint.authenticate = true
-//        constraint.setRoles(arrayOf( "admin"))
-//        val cm = ConstraintMapping()
-//        cm.pathSpec = "/rest/admin/*"
-//        cm.constraint = constraint
-//
-//        val constraint2 = Constraint()
-//        constraint2.name = "auth2"
-//        constraint2.authenticate = true
-//        constraint2.setRoles(arrayOf("guest"))
-//        val cm2 = ConstraintMapping()
-//        cm2.pathSpec = "/rest/hello/*"
-//        cm2.constraint = constraint2
-//
-//        csh.addConstraintMapping(cm)
-//        csh.addConstraintMapping(cm2)
 
         csh.authenticator = CustomAuthenticator()
         csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")

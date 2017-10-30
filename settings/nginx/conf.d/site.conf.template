@@ -2,33 +2,25 @@ server {
 
     listen 80 ;
 
-    location ~ /rest/login* {
-        internal;
-        proxy_pass            http://srv-java-users:8080 ;
+    #proxy_redirect   off;
+    proxy_set_header Host              $http_host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    location ~ /rest/login/* {
+        proxy_pass            http://srv-java-users:8081 ;
     }
 
-    location ~ /rest/session* {
-        internal ;
-        proxy_pass            http://srv-java-users:8080 ;
-        proxy_set_header      X-Original-URI $request_uri ;
-    }
-
-    location ~ /rest/jwt* {
-        internal ;
-        proxy_pass            http://srv-java-users:8080 ;
-    }
-
-    location ~ /rest/data* {
-        internal ;
-        proxy_pass            http://srv-java-users:8080 ;
-    }
-
-    location ~ / {
-        if ($http_cookie ~ "JwtToken") {
-           rewrite ^(.*)$ $1 ;
+    location ~ /rest/* {
+        if ($http_cookie !~ "JwtToken=") {
+           return 303 $scheme://$host:8080/rest/login ;
         }
+        proxy_pass            http://srv-java-users:8081 ;
+    }
 
-        rewrite ^(.*)$ /rest/login ;
+    location / {
+        proxy_pass            http://srv-java-users:8081 ;
     }
 
 }

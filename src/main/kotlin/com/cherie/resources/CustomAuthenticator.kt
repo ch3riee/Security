@@ -43,6 +43,7 @@ import sun.security.rsa.RSAPrivateCrtKeyImpl
 import java.io.*
 import java.security.Principal
 import java.util.*
+import javax.servlet.http.Cookie
 
 
 /**
@@ -180,7 +181,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            session.setAttribute("JwtToken", generateJWT(user_email))
+            val jwt =  generateJWT(user_email)
+            session.setAttribute("JwtToken",jwt)
         }
         return user
     }
@@ -447,16 +449,23 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
 
-                        if (nuri == null || nuri!!.isEmpty() || nuri!!.contains("http://127.0.0.1:8080/rest/login/") ) {
-                            nuri = "http://127.0.0.1:8080/rest/login/success"
+                        if (nuri == null || nuri!!.isEmpty() || nuri!!.contains("/rest/login/") ) {
+                            nuri = "/rest/login/success"
                             if (nuri!!.isEmpty())
                                 nuri = URIUtil.SLASH
                         }
                     }
 
                     response.setContentLength(0)
+                    val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
+                    c.domain = request.serverName
+                    c.path = "/"
+                    response.addCookie(c)
+
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                         (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
+                   // val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
+                    //base_response.addCookie(c)
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
                     return form_auth
                 }
@@ -475,8 +484,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 } else {
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                         (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
-                    base_response.sendRedirect(redirectCode,
-                            response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    //base_response.sendRedirect(redirectCode,
+                            //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    res.sendRedirect(_formErrorPage)
                 }
 
                 return Authentication.SEND_FAILURE
@@ -494,14 +504,19 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     synchronized(session) {
                         nuri = session!!.getAttribute(__J_URI) as String?
                         if (nuri == null || nuri!!.isEmpty() ||
-                                nuri!!.contains("http://127.0.0.1:8080/rest/login/")) {
-                            nuri = "http://127.0.0.1:8080/rest/login/success"
+                                nuri!!.contains("/rest/login/")) {
+                            nuri = "/rest/login/success"
                             if (nuri!!.isEmpty())
                                 nuri = URIUtil.SLASH
                         }
                     }
 
                     response.setContentLength(0)
+                    val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
+                    c.domain = request.serverName
+                    c.path = "/"
+                    response.addCookie(c)
+
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                         HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
@@ -522,8 +537,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 } else {
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                         HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                    base_response.sendRedirect(redirectCode,
-                            response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    //base_response.sendRedirect(redirectCode,
+                            //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    res.sendRedirect(_formErrorPage)
                 }
 
                 return Authentication.SEND_FAILURE
@@ -599,8 +615,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 LOG.debug("challenge {}->{}", session.id, _formLoginPage)
                 val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                     HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                base_response.sendRedirect(redirectCode,
-                        response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
+                //base_response.sendRedirect(redirectCode,
+                //        response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
+                res.sendRedirect(_formLoginPage)
             }
             return Authentication.SEND_CONTINUE
             //this ends the try block

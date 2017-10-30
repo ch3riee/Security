@@ -8,20 +8,21 @@ import javax.ws.rs.core.Response.Status
 import javax.ws.rs.core.Response
 import javax.ws.rs.*
 import javax.ws.rs.core.Context
+import javax.ws.rs.core.Cookie
 import javax.ws.rs.core.NewCookie
 
 @Path("jwt")
 class JwtResource{
 
-    @GET
+/*    @GET
     @Path("getJWT")
     fun getToken(@Context request: HttpServletRequest): Response{
         val session = request.getSession(false)
         val jwt = session.getAttribute("JwtToken") as String
-        val cookie = NewCookie("JwtToken", jwt)
+        val cookie = NewCookie(Cookie("JwtToken", jwt, "/", request.serverName))
         return Response.status(Status.OK).type("text/plain").entity(jwt).cookie(cookie).build()
 
-    }
+    }*/
 
     @GET
     @Path("checkJWT")

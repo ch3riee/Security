@@ -16,7 +16,7 @@ class Logout{
         {
             request.getSession(false).invalidate()
         }
-        return Response.temporaryRedirect(URI("http://127.0.0.1:8080/rest/login")).build()
+        return Response.temporaryRedirect(URI("/rest/login")).build()
     }
 
 }
