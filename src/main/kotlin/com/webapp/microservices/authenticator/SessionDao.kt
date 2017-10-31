@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -24,7 +24,8 @@ class SessionDao{
     @RolesAllowed("admin")
     fun get( @Context req: HttpServletRequest, @QueryParam("key") key :String): Response {
         val session = req.getSession(false)
-        val theJson = session.getAttribute(key!!.substring(0,1)) as String?
+        val arr = key.split(".")
+        val theJson = session.getAttribute(arr[0]) as String?
         theJson?.let {
             val mapper = ObjectMapper()
             val data =  mapper.readTree(theJson)
@@ -52,31 +53,39 @@ class SessionDao{
     @RolesAllowed("admin")
     fun set(@QueryParam("key") key :String, @Context req: HttpServletRequest, data: String): Response {
         val session = req.getSession(false)
-        val currObj = session.getAttribute(key!!.substring(0,1)) as String?
+
         val arr = key.split(".")
-        var theRoot: ObjectNode
+        val currObj = session.getAttribute(arr[0]) as String?
+        var theRoot: JsonNode
         val mapper = ObjectMapper()
+
         theRoot = if(currObj == null) mapper.createObjectNode() else (
-                mapper.readValue(currObj, ObjectNode::class.java))
-        var curr: ObjectNode = theRoot
-        var i = 1
-        while(i < arr.size - 1){
-            val temp = curr.get(arr[i])
-            //if does not exist then we create
-            curr = if(temp == null) curr.putObject(arr[i]) else (temp as ObjectNode)
-            i += 1
+                mapper.readTree(currObj))
+        if(arr.size == 1 || theRoot.isArray())
+        {
+            session.setAttribute(key, mapper.readTree(data).toString())
+        }
+        else{
+            var curr: ObjectNode = theRoot as ObjectNode
+            var i = 1
+            while(i < arr.size - 1){
+                val temp = curr.get(arr[i])
+                //if does not exist then we create
+                curr = if(temp == null) curr.putObject(arr[i]) else (temp as ObjectNode)
+                i += 1
+            }
+
+            val configuration = Configuration.builder()
+                    .jsonProvider(JacksonJsonNodeJsonProvider())
+                    .mappingProvider(JacksonMappingProvider())
+                    .build()
+            val index = key.lastIndexOf('.')
+            val newJson: String? = JsonPath.using(configuration).parse(theRoot)
+                    .put(JsonPath.compile("$" + key.substring(1,index)),
+                            key.substring(index + 1), mapper.readTree(data)).jsonString()
+            session.setAttribute(key.substring(0,1),newJson)
         }
 
-
-        val configuration = Configuration.builder()
-                .jsonProvider(JacksonJsonNodeJsonProvider())
-                .mappingProvider(JacksonMappingProvider())
-                .build()
-        val index = key.lastIndexOf('.')
-        val newJson: String? = JsonPath.using(configuration).parse(theRoot)
-                                       .put(JsonPath.compile("$" + key.substring(1,index)),
-                                               key.substring(index + 1), mapper.readTree(data)).jsonString()
-            session.setAttribute(key.substring(0,1),newJson)
             val a = session.getAttribute(key.substring(0,1)) as String //done this way for debugging purposes
             return Response.ok().entity(mapper.readTree(a)).build()
     }

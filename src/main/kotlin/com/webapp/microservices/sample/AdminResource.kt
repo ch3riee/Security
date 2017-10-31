@@ -1,5 +1,8 @@
-package com.cherie.resources
+package com.webapp.microservices.sample
 
+import com.webapp.microservices.authenticator.Permissions
+import com.webapp.microservices.authenticator.Roles
+import com.webapp.microservices.authenticator.Users
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -13,7 +16,7 @@ import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
-@RolesAllowed("poweruser")
+@RolesAllowed("admin")
 @Path("admin")
 class AdminResource {
 
@@ -35,9 +38,9 @@ class AdminResource {
         Database.connect(myDataSource)
         transaction{
             when(table) {
-                "Users" -> Users.deleteWhere{Users.username eq name}
-                "Roles" -> Roles.deleteWhere{Roles.name eq name}
-                "Permissions" -> Permissions.deleteWhere{Permissions.operation eq name}
+                "Users" -> Users.deleteWhere{ Users.username eq name}
+                "Roles" -> Roles.deleteWhere{ Roles.name eq name}
+                "Permissions" -> Permissions.deleteWhere{ Permissions.operation eq name}
                  else -> message = "No such table exists in the DB"
             }
         }

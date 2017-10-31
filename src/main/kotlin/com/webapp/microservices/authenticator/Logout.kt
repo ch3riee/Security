@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import javax.ws.rs.core.Response
 import java.net.URI
@@ -9,8 +9,8 @@ import javax.ws.rs.core.Cookie
 
 @Path("logout")
 class Logout{
+
     @GET
-    @Produces("text/html")
     fun logout(@Context request: HttpServletRequest, @CookieParam("JSESSIONID") cookie: Cookie?): Response {
         if(cookie != null)
         {

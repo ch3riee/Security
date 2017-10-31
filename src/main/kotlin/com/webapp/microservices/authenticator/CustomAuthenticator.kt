@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import com.mashape.unirest.http.Unirest
 import io.jsonwebtoken.Jwts
@@ -153,10 +153,40 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
         var user_email: String = username
         var authenticated = false
+        var flag = false
         if((password as String).isEmpty()) {
+            flag = true
             //Get sso token and then subsequently get the user email as username
             user_email = ssoHelper(username)
-            authenticated = true
+            Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+            transaction {
+                val c = Users.select {
+                    Users.username.eq(user_email)
+                }.count()
+                if (c == 0) {
+                    //does not exist yet must create an entry
+                    val userId = Users.insert {
+                        it[Users.username] = user_email
+                        it[Users.password] = ""
+                    } get Users.id
+                    //create a new row in UserRole table
+                    //find the role id for admin
+                    val myList = ArrayList<String>()
+                    myList.add("admin")
+                    myList.add("guest")
+                    myList.add("poweruser")
+                    Roles.select {
+                        Roles.name.inList(myList)
+                    }.forEach {
+                        val adminId = it[Roles.id]
+                        UserRole.insert {
+                            it[uid] = userId
+                            it[roleid] = adminId
+                        }
+                    }
+                }
+                authenticated = true
+            }
         }
         else{
             //this is a local authentication attempt, check database to see if credentials are correct
@@ -168,7 +198,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 if (currUser.count() == 1)
                 {
                     currUser.forEach{
-                        if(it[Users.password].equals(password)) authenticated = true
+                        if(it[Users.password].isEmpty()) return@transaction
+                        if(it[Users.password] == password) authenticated = true
                     }
                 }
             }
@@ -181,13 +212,13 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val session = (request as HttpServletRequest).getSession(true)
             val cached = SessionAuthentication(authMethod, user, password)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            val jwt =  generateJWT(user_email)
+            val jwt =  generateJWT(user_email,flag )
             session.setAttribute("JwtToken",jwt)
         }
         return user
     }
 
-    fun generateJWT(email: String): String {
+    fun generateJWT(email: String, flag: Boolean): String {
         val (roles, perms) = getRolesPerms(email)
         var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
                                                        .readText()
@@ -196,6 +227,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val myMap = HashMap<String, Any>()
         myMap.put("Roles", roles.toTypedArray())
         myMap.put("Permissions", perms.toTypedArray())
+        val type = if(flag) "sso" else "local"
+        myMap.put("LoginType", type)
         return Jwts.builder()
                       .setClaims(myMap)
                       .setSubject(email)
@@ -393,136 +426,53 @@ class CustomAuthenticator() : LoginAuthenticator() {
             return DeferredAuthentication(this)
 
         var session: HttpSession? = request.getSession(true)
-        /*val ic = InitialContext()
-        val myDatasource = ic.lookup("java:comp/env/jdbc/sessionStore") as DataSource
-        var conn: Connection? = null
-        try{
-            conn = myDatasource.getConnection()
-
-        }catch(e: SQLException){
-            println("error connecting to session db")
-        }finally{
-            if(conn != null)
-            {
-                val statement = conn.prepareStatement("select * from " + "jettysessions" +
-                        " where " + "jettysessions.sessionid" + " = ?")
-                val s = session!!.getId()
-                statement.setString(1, s)
-
-
-                var resultSet = statement.executeQuery()
-                while(resultSet.next()){
-                   println(resultSet.getString("sessionid"))
-                    val bytes = resultSet.getBytes("map")
-                    val input = ByteArrayInputStream(bytes)
-                    val ois = ClassLoadingObjectInputStream(input)
-                    val obj = ois.readObject()
-                    println(obj.toString())
-                   // println(obj.get(SessionAuthentication.__J_AUTHENTICATED))
-
-                }
-                conn.close()
-            }
-        }
-
-
-        println("session: " + session)
-        println("session: " + session)
-        println("session id: " + session!!.getId())
-        println(" is from cookie: " + request.isRequestedSessionIdFromCookie())
-        println(session!!.getAttribute(SessionAuthentication.__J_AUTHENTICATED))*/
 
         //if unable to create a session, user must be unauthenticated
         if (session == null) return Authentication.UNAUTHENTICATED
 
         try {
             // Handle a request for authentication. )
+            var user: UserIdentity? = null
+            var checked = false
             if (isJSecurityCheck(uri)) {
                 val tempCode = request.getParameter("code")
+                checked = true
 
-                val user = login(tempCode, "", request)
-                session = request.getSession(false)
-                if (user != null) {
-                    // Redirect to original request
-                    var nuri: String? = "hi"
-                    var form_auth= CustomAuthentication(authMethod, user)
-                    synchronized(session) {
-                        nuri = session!!.getAttribute(__J_URI) as String?
-
-                        if (nuri == null || nuri!!.isEmpty() || nuri!!.contains("/rest/login/") ) {
-                            nuri = "/rest/login/success"
-                            if (nuri!!.isEmpty())
-                                nuri = URIUtil.SLASH
-                        }
-                    }
-
-                    response.setContentLength(0)
-                    val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
-                    c.domain = request.serverName
-                    c.path = "/"
-                    response.addCookie(c)
-
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                        (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
-                   // val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
-                    //base_response.addCookie(c)
-                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
-                    return form_auth
-                }
-
-                // not authenticated
-                if (LOG.isDebugEnabled)
-                    LOG.debug("Form authentication FAILED")
-                if (_formErrorPage == null) {
-                    LOG.debug("auth failed ->403")
-                    response?.sendError(HttpServletResponse.SC_FORBIDDEN)
-                } else if (_dispatch) {
-                    val dispatcher = request.getRequestDispatcher(_formErrorPage)
-                    response.setHeader(HttpHeader.CACHE_CONTROL.asString(), HttpHeaderValue.NO_CACHE.asString())
-                    response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
-                    dispatcher.forward(FormRequest(request), FormResponse(response))
-                } else {
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                        (HttpServletResponse.SC_MOVED_TEMPORARILY) else HttpServletResponse.SC_SEE_OTHER
-                    //base_response.sendRedirect(redirectCode,
-                            //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
-                    res.sendRedirect(_formErrorPage)
-                }
-
-                return Authentication.SEND_FAILURE
+                user = login(tempCode, "", request)
             }
-            else if(isJLocal(uri))
-            {
+            else if(isJLocal(uri)) {
                 val username = request.getParameter(__J_USERNAME)
                 val password = request.getParameter(__J_PASSWORD)
-                val user = login(username, password , request)
-                session = request.getSession(false)
-                if (user != null) {
-                    // Redirect to original request
-                    var nuri: String? = null
-                    var form_auth = CustomAuthentication(authMethod, user)
-                    synchronized(session) {
-                        nuri = session!!.getAttribute(__J_URI) as String?
-                        if (nuri == null || nuri!!.isEmpty() ||
-                                nuri!!.contains("/rest/login/")) {
-                            nuri = "/rest/login/success"
-                            if (nuri!!.isEmpty())
-                                nuri = URIUtil.SLASH
-                        }
+                user = login(username, password, request)
+                checked = true
+            }
+            session = request.getSession(false)
+            if (user != null) {
+                // Redirect to original request
+                var nuri: String? = null
+                var form_auth = CustomAuthentication(authMethod, user)
+                synchronized(session) {
+                    nuri = session!!.getAttribute(__J_URI) as String?
+                    if (nuri == null || nuri!!.isEmpty() ||
+                            nuri!!.contains("/rest/login/")) {
+                        nuri = "/rest/login/success"
+                        if (nuri!!.isEmpty())
+                            nuri = URIUtil.SLASH
                     }
-
-                    response.setContentLength(0)
-                    val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
-                    c.domain = request.serverName
-                    c.path = "/"
-                    response.addCookie(c)
-
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                    base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
-                    return form_auth
                 }
 
+                response.setContentLength(0)
+                val c = Cookie("JwtToken", session.getAttribute("JwtToken") as String)
+                c.domain = request.serverName
+                c.path = "/"
+                response.addCookie(c)
+
+                val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                    HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
+                return form_auth
+            }//if login was successful will return here
+            else if (checked == true){
                 // not authenticated
                 if (LOG.isDebugEnabled)
                     LOG.debug("Form authentication FAILED")
@@ -538,13 +488,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                         HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                     //base_response.sendRedirect(redirectCode,
-                            //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
+                    //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                     res.sendRedirect(_formErrorPage)
                 }
-
                 return Authentication.SEND_FAILURE
-
-            }//end of local login sequence
+            }
 
             // Look for cached authentication
             val authentication = session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?

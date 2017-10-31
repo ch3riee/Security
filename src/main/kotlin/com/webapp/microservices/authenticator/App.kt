@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import org.eclipse.jetty.servlet.ServletContextHandler
 import org.eclipse.jetty.servlet.ServletHolder
@@ -17,7 +17,7 @@ object App{
 
     @JvmStatic fun main (args: Array<String>){
         var config = ResourceConfig()
-        config.packages("com.cherie.resources")
+        config.packages("com.webapp.microservices.authenticator", "com.webapp.microservices.sample")
         config.register(RolesAllowedDynamicFeature::class.java)
         config.register(JacksonFeature::class.java)
 
@@ -39,8 +39,8 @@ object App{
 
         val sessionManager = SessionHandler()
         sessionManager.setUsingCookies(true)
-        sessionManager.maxInactiveInterval = 300
-        sessionManager.CookieConfig().maxAge = 60 * 5
+      //  sessionManager.maxInactiveInterval = 300
+      //  sessionManager.CookieConfig().maxAge = 60 * 5
         val sessionCache = DefaultSessionCache(sessionManager)
         val db = JDBCSessionDataStore()
         val myAdaptor = DatabaseAdaptor()

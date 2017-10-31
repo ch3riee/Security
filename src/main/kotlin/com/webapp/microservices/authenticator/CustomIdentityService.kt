@@ -1,5 +1,6 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
+import com.webapp.microservices.authenticator.CustomUserIdentity
 import org.eclipse.jetty.security.IdentityService
 import org.eclipse.jetty.security.RoleRunAsToken
 import org.eclipse.jetty.security.RunAsToken

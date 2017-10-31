@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
@@ -29,8 +29,8 @@ class Login{
                 "    <p>\n" +
                 "      To login via github, please use this link:\n" +
                 "      <a href=\"https://github.com/login/oauth/authorize?redirect_uri=" +
-                "      /rest/login/ssocallback&scope=user:email" +
-                "      &client_id=c1371dc4d42722495100\n\">Click here</a> to login via SSO!</a>\n" +
+                "http://127.0.0.1:8080/rest/login/ssocallback&scope=user:email" +
+                "&client_id=c1371dc4d42722495100\n\">Click here</a> to login via SSO!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
                 "      To login via application, please use this link:\n" +

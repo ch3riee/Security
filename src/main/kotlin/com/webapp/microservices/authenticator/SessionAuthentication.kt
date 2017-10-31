@@ -1,7 +1,5 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
-import java.io.IOException
-import java.io.ObjectInputStream
 import java.io.Serializable
 
 import javax.servlet.http.HttpSession
@@ -10,12 +8,9 @@ import javax.servlet.http.HttpSessionBindingEvent
 import javax.servlet.http.HttpSessionBindingListener
 import javax.servlet.http.HttpSessionEvent
 
-import org.eclipse.jetty.security.LoginService
 import org.eclipse.jetty.security.SecurityHandler
-import org.eclipse.jetty.server.UserIdentity
 import org.eclipse.jetty.server.session.Session
 import org.eclipse.jetty.util.log.Log
-import org.eclipse.jetty.util.log.Logger
 
 class SessionAuthentication(method: String, userIdentity: CustomUserIdentity, private val _credentials: Any) : AbstractUserAuthentication(method, userIdentity), Serializable, HttpSessionActivationListener, HttpSessionBindingListener {
 

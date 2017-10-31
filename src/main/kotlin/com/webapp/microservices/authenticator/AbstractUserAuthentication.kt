@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.authenticator
 
 import org.eclipse.jetty.security.ConstraintAware
 import org.eclipse.jetty.security.SecurityHandler

@@ -42,7 +42,7 @@ dependencies {
 }
 
 
-mainClassName = 'com.cherie.resources.App'
+mainClassName = 'com.webapp.microservices.authenticator.App'
 
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"

@@ -1,4 +1,4 @@
-package com.cherie.resources
+package com.webapp.microservices.sample
 
 import javax.annotation.security.PermitAll
 import javax.annotation.security.RolesAllowed
