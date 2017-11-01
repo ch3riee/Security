@@ -20,8 +20,7 @@ import javax.ws.rs.core.HttpHeaders
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 import javax.annotation.security.RolesAllowed
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
+import javax.xml.bind.DatatypeConverter
 
 
 @Path("services")
@@ -79,6 +78,7 @@ class ServiceResource{
 
     }
 
+    //can change this later, random string generator. This results in a 16 character string
     private fun getRandom(): String {
         val random = SecureRandom()
         val bytes = ByteArray(12)
@@ -101,7 +101,7 @@ class ServiceResource{
         val jwt = Jwts.builder()
                 .setClaims(myMap)
                 .setSubject(name)
-                .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
+                .signWith(SignatureAlgorithm.RS256, RSAPrivateCrtKeyImpl.newKey(privateKey))
                 .compact()
         return jwt
     }
@@ -111,16 +111,16 @@ class ServiceResource{
     @RolesAllowed("superadmin")
     @Produces(MediaType.APPLICATION_JSON)
     fun checkToken(@Context headers: HttpHeaders): Response{
-        //assumes that the microservice has already decrypted the public key encryption on the jwt
-        //otherwise means that the microservice may not be valid!!
-        val jwt = headers.getRequestHeader("authorization").get(0) as String
-        println("Before actually check jwt: " + jwt)
+        val temp = headers.getRequestHeader("authorization").get(0) as String
+        val jwt = temp.substring(temp.indexOf(' ') + 1) //trims out bearer
         var publicKey = (this::class.java.classLoader).getResource("pki/Public.key").readText().toByteArray()
         publicKey = Base64.getDecoder().decode(publicKey)
         val res = Jwts.parser().setSigningKey(RSAPublicKeyImpl(publicKey)).parseClaimsJws(jwt).body
         return Response.status(Response.Status.OK).entity(res).build()
     }
 
+
+    //PURELY FOR TESTING PURPOSES: to decrypt the temp string
     @POST
     @Path("decryptSecret")
     @RolesAllowed("superadmin")
@@ -129,18 +129,16 @@ class ServiceResource{
     fun decrypt(body: String): Response{
         val mapper = ObjectMapper()
         val root = mapper.readTree(body)
-        val s = root.get("tempSecret").asText()
-
+        val s  = root.get("tempSecret").textValue()
+        val temp = DatatypeConverter.parseBase64Binary(s)
         var privateKey = (this::class.java.classLoader).getResource("pki/sample/Private.key")
                 .readText()
                 .toByteArray()
         privateKey = Base64.getDecoder().decode(privateKey)
-        val cipher = Cipher.getInstance("RSA")
-        cipher.init(Cipher.DECRYPT_MODE, RSAPrivateCrtKeyImpl.newKey(privateKey))
-        println(s.toByteArray().size)
-        val ret = cipher.doFinal(s.toByteArray())
-        return Response.ok().type("text/plain").entity(ret).build()
-
+        val cipher2 = Cipher.getInstance("RSA")
+        cipher2.init(Cipher.PRIVATE_KEY, RSAPrivateCrtKeyImpl.newKey(privateKey))
+        val ret = cipher2.doFinal(temp)
+        return Response.ok().entity(String(ret)).build()
     }
 
     @GET
@@ -148,7 +146,6 @@ class ServiceResource{
     @RolesAllowed("superadmin") //testing for microservices
     @Produces(MediaType.APPLICATION_JSON)
     fun checkService(@QueryParam("tempSecret") temp: String?, @QueryParam("name") name: String): Response{
-        //need to first grab the encrypted sym as well as the encrypted token
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         var theString: String? = null
         var keypub: String? = null
@@ -166,25 +163,17 @@ class ServiceResource{
         }
         if(temp == null){
             //grab the temporary string in service account db and encrypt it. Then return it to them
-            val pkey = Base64.getDecoder().decode(keypub)
-            val key  = RSAPublicKeyImpl(pkey)
+            val storedkey = Base64.getDecoder().decode(keypub)
             val cipher = Cipher.getInstance("RSA")
-            cipher.init(Cipher.PUBLIC_KEY, key)
-            println(theString?.toByteArray()?.size)
-            println(theString)
-            val tempString = cipher.doFinal(theString?.toByteArray())
-
-            root.put("tempSecret", tempString)
-            return Response.ok().entity(root).build() //they need to decrypt it with private key
+            cipher.init(Cipher.PUBLIC_KEY, RSAPublicKeyImpl(storedkey))
+            val encrypted = cipher.doFinal(theString?.toByteArray())
+            val s = DatatypeConverter.printBase64Binary(encrypted)
+            root.put("tempSecret", s)
+            return Response.ok().entity(root).build()
         }
         //temp has supposedly been decrypted and returned
         if(temp.equals(theString)) root.put("BearerToken", jwt)
         return Response.ok().entity(root).build() //what if it does not work?
 
     }
-
-
-
-
-
 }
