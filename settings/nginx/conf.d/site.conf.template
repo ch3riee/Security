@@ -12,6 +12,13 @@ server {
         proxy_pass            http://srv-java-users:8081 ;
     }
 
+    location ~ /rest/session/* {
+        if ($http_authorization = ""){
+           return 302 $scheme://$host:8080/rest/login ;
+        }
+        proxy_pass            http://srv-java-users:8081 ;
+    }
+
     location ~ /rest/* {
         if ($http_cookie !~ "JwtToken=") {
            return 303 $scheme://$host:8080/rest/login ;

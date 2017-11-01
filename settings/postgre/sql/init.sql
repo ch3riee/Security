@@ -10,7 +10,30 @@ CREATE TABLE IF NOT EXISTS Permissions (id serial PRIMARY KEY, operation VARCHAR
 
 CREATE TABLE IF NOT EXISTS RolePerm (pid INT references Permissions(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE);
 
+CREATE TABLE IF NOT EXISTS Services (id serial PRIMARY KEY, servicename VARCHAR(50) NOT NULL UNIQUE, servicetoken text, publickey text, tempsecret VARCHAR(20));
 
+CREATE TABLE IF NOT EXISTS ServiceRole (sid INT references Services(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE);
+
+-- Service Roles
+INSERT INTO Roles(rolename) VALUES ('superadmin'), ('service'), ('serviceOwner'); --can change later, just for testing purposes
+
+--INSERT INTO Services(servicename, serviceToken, publicKey) VALUES ('shoppingcart', )
+
+
+--fake super admin user for testing purposes
+INSERT INTO Users(username, pwd) VALUES ('superadmin@gmail.com', 'j');
+WITH superadmin AS (
+   SELECT id FROM Users WHERE username = 'superadmin@gmail.com'
+), r2 AS (
+   SELECT id FROM Roles WHERE rolename = 'superadmin'
+)INSERT INTO UserRole(uid, roleid) SELECT r2.id, superadmin.id from r2, superadmin; --Giving it the superadmin role! So we can access services api
+
+
+
+
+
+
+-- User Roles
 INSERT INTO Roles(rolename) VALUES ('guest'), ('admin'), ('poweruser');
 
 INSERT INTO Permissions(operation) VALUES ('user:create'), ('user:modify'),('user:delete'), ('device:create'),('device:modify')

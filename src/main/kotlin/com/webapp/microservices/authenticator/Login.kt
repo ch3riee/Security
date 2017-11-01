@@ -113,9 +113,7 @@ class Login{
     @Path("signupcallback")
     @Consumes("application/x-www-form-urlencoded")
     fun callbackSignUp(@FormParam("j_username") email: String, @FormParam("j_password") pwd: String): Response{
-        val ic = InitialContext()
-        val myDataSource = ic.lookup("java:comp/env/jdbc/userStore") as DataSource
-        Database.connect(myDataSource)
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         var exists = false
         transaction{
             val c = Users.select {
@@ -135,7 +133,7 @@ class Login{
                 //create a new row in UserRole table
                 //find the role id for admin
                 val myList = ArrayList<String>()
-                myList.add("admin")
+                myList.add("superadmin")
                 myList.add("guest")
                 myList.add("poweruser")
                 Roles.select{

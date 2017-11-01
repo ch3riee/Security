@@ -31,6 +31,19 @@ object RolePerm: Table(){
     val roleid = (integer("roleid") references Roles.id)
 }
 
+object Services: Table(){
+    val id = integer("id").autoIncrement("services_seq").primaryKey()
+    val sname = varchar("servicename", 50)
+    val token = text("servicetoken")
+    val pubKey = text("publickey")
+    val secret = varchar("tempsecret", 20)
+}
+
+object ServiceRole: Table(){
+    val sid = (integer("sid") references Services.id)
+    val roleid = (integer("roleid") references Roles.id)
+}
+
 
 
 
