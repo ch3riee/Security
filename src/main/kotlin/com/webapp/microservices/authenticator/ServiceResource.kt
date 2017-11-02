@@ -96,8 +96,7 @@ class ServiceResource{
         val myMap = HashMap<String, Any>()
         myMap.put("Roles", roles.toTypedArray())
         //myMap.put("Permissions", perms.toTypedArray())
-        val type = "service"
-        myMap.put("TokenType", type)
+        myMap.put("TokenType", "service")
         val jwt = Jwts.builder()
                 .setClaims(myMap)
                 .setSubject(name)
@@ -129,15 +128,13 @@ class ServiceResource{
     fun decrypt(body: String): Response{
         val mapper = ObjectMapper()
         val root = mapper.readTree(body)
-        val s  = root.get("tempSecret").textValue()
-        val temp = DatatypeConverter.parseBase64Binary(s)
         var privateKey = (this::class.java.classLoader).getResource("pki/sample/Private.key")
                 .readText()
                 .toByteArray()
         privateKey = Base64.getDecoder().decode(privateKey)
         val cipher2 = Cipher.getInstance("RSA")
         cipher2.init(Cipher.PRIVATE_KEY, RSAPrivateCrtKeyImpl.newKey(privateKey))
-        val ret = cipher2.doFinal(temp)
+        val ret = cipher2.doFinal(DatatypeConverter.parseBase64Binary(root.get("tempSecret").textValue()))
         return Response.ok().entity(String(ret)).build()
     }
 
@@ -161,19 +158,17 @@ class ServiceResource{
                 jwt = it[Services.token]
             }
         }
-        if(temp == null){
-            //grab the temporary string in service account db and encrypt it. Then return it to them
-            val storedkey = Base64.getDecoder().decode(keypub)
-            val cipher = Cipher.getInstance("RSA")
-            cipher.init(Cipher.PUBLIC_KEY, RSAPublicKeyImpl(storedkey))
-            val encrypted = cipher.doFinal(theString?.toByteArray())
-            val s = DatatypeConverter.printBase64Binary(encrypted)
-            root.put("tempSecret", s)
-            return Response.ok().entity(root).build()
+        temp?.let{//if temp is not null
+            if(temp.equals(theString)) root.put("BearerToken", jwt)
+            return Response.ok().entity(root).build() //what if it does not work?
         }
-        //temp has supposedly been decrypted and returned
-        if(temp.equals(theString)) root.put("BearerToken", jwt)
-        return Response.ok().entity(root).build() //what if it does not work?
-
+        //grab the temporary string in service account db and encrypt it. Then return it to them
+        val cipher = Cipher.getInstance("RSA")
+        cipher.init(Cipher.PUBLIC_KEY, RSAPublicKeyImpl(Base64.getDecoder().decode(keypub)))
+        val s = DatatypeConverter.printBase64Binary(cipher.doFinal(theString?.toByteArray()))
+        root.put("tempSecret", s)
+        return Response.ok().entity(root).build()
     }
+
+
 }

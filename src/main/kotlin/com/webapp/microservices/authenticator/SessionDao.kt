@@ -30,8 +30,7 @@ class SessionDao{
         val temp = headers.getRequestHeader("authorization").get(0) as String
         val jwt = temp.substring(temp.indexOf(' ') + 1) //trims out bearer
         val mapper = ObjectMapper()
-        if(checkToken(jwt) != null)
-        {
+        (checkToken(jwt))?.let{
             val session = req.getSession(false)
             val arr = key.split(".")
             val theJson = session.getAttribute(arr[0]) as String?
@@ -74,19 +73,15 @@ class SessionDao{
     @Path("set")
     fun set(@QueryParam("key") key :String, @Context req: HttpServletRequest, data: String,
             @Context headers: HttpHeaders): Response {
-        val temp = headers.getRequestHeader("authorization").get(0) as String
-        val jwt = temp.substring(temp.indexOf(' ') + 1) //trims out bearer
+        val tempStr = headers.getRequestHeader("authorization").get(0) as String
+        val jwt = tempStr.substring(tempStr.indexOf(' ') + 1) //trims out bearer
         val mapper = ObjectMapper()
-        if(checkToken(jwt) != null)
-        {
+        (checkToken(jwt))?.let{
             val session = req.getSession(false)
-
             val arr = key.split(".")
             val currObj = session.getAttribute(arr[0]) as String?
-            var theRoot: JsonNode
-            val mapper = ObjectMapper()
 
-            theRoot = if(currObj == null) mapper.createObjectNode() else (
+            val theRoot = if(currObj == null) mapper.createObjectNode() else (
                     mapper.readTree(currObj))
             if(arr.size == 1 || theRoot.isArray())
             {
