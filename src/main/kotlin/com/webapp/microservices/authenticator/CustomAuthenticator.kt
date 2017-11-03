@@ -172,9 +172,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     //create a new row in UserRole table
                     //find the role id for admin
                     val myList = ArrayList<String>()
-                    myList.add("admin")
+                    myList.add("admin") //for testing purposes!
                     myList.add("guest")
-                    myList.add("poweruser")
+                    myList.add("user")
                     Roles.select {
                         Roles.name.inList(myList)
                     }.forEach {
@@ -210,10 +210,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val user = createUserIdentity(user_email, password) as CustomUserIdentity?
         user?.let {
             val session = (request as HttpServletRequest).getSession(true)
-            val cached = SessionAuthentication(authMethod, user, password)
-            session.setAttribute(SessionAuthentication.__J_AUTHENTICATED, cached)
-            val jwt =  generateJWT(user_email,flag )
-            session.setAttribute("JwtToken",jwt)
+            session.setAttribute(SessionAuthentication.__J_AUTHENTICATED,
+                    SessionAuthentication(authMethod, user, password))
+            session.setAttribute("JwtToken",generateJWT(user_email,flag ))
         }
         return user
     }
@@ -437,7 +436,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             if (isJSecurityCheck(uri)) {
                 val tempCode = request.getParameter("code")
                 checked = true
-
                 user = login(tempCode, "", request)
             }
             else if(isJLocal(uri)) {

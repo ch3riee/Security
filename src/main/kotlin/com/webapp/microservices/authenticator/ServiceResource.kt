@@ -21,6 +21,7 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 import javax.annotation.security.RolesAllowed
 import javax.xml.bind.DatatypeConverter
+import kotlin.collections.ArrayList
 
 
 @Path("services")
@@ -30,7 +31,7 @@ class ServiceResource{
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_PLAIN)
     @Path("register")
-    @RolesAllowed("superadmin")
+    @RolesAllowed("admin")
     fun registerService(@QueryParam("name") name: String, key: String): Response{
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         var exists = false
@@ -43,10 +44,27 @@ class ServiceResource{
                 exists = true
                 return@transaction
             }
-            val myList = ArrayList<String>()
-            myList.add("service")
+            val rList = ArrayList<String>()
+            val pList = HashSet<String>()
+            rList.add("sessionOperator")
             //does not exist yet must create an entry
-             jwt = generateJWT(name, myList)
+            val roles = Roles.select{
+                Roles.name.inList(rList)
+            }
+
+            roles.forEach{
+                RolePerm.select{
+                    RolePerm.roleid.eq(it[Roles.id])
+                }.forEach{
+                    Permissions.select{
+                        Permissions.id.eq(it[RolePerm.pid])
+                    }.forEach{
+                        pList.add(it[Permissions.operation])
+                    }
+                }
+            }
+
+             jwt = generateJWT(name, rList, ArrayList<String>(pList))
             val id = Services.insert {
                 it[sname] = name
                 it[token] = jwt
@@ -54,16 +72,12 @@ class ServiceResource{
                 it[secret] = getRandom()
             } get Services.id
 
-            //create a new row in UserRole table
-            //find the role id for admin
-
-            Roles.select {
-                Roles.name.inList(myList)
-            }.forEach {
-                val adminId = it[Roles.id]
+            //create new ServiceRole entry
+            roles.forEach {
+                val sessionId = it[Roles.id]
                 ServiceRole.insert {
                     it[sid] = id
-                    it[roleid] = adminId
+                    it[roleid] = sessionId
                 }
             }
         }
@@ -88,26 +102,25 @@ class ServiceResource{
     }
 
 
-    fun generateJWT(name: String, roles: ArrayList<String>): String {
+    fun generateJWT(name: String, roles: ArrayList<String>, perms: ArrayList<String>): String {
         var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
                 .readText()
                 .toByteArray()
         privateKey = Base64.getDecoder().decode(privateKey)
         val myMap = HashMap<String, Any>()
         myMap.put("Roles", roles.toTypedArray())
-        //myMap.put("Permissions", perms.toTypedArray())
+        myMap.put("Permissions", perms.toTypedArray())
         myMap.put("TokenType", "service")
         val jwt = Jwts.builder()
                 .setClaims(myMap)
                 .setSubject(name)
-                .signWith(SignatureAlgorithm.RS256, RSAPrivateCrtKeyImpl.newKey(privateKey))
+                .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
                 .compact()
         return jwt
     }
 
     @GET
     @Path("checkServiceToken")
-    @RolesAllowed("superadmin")
     @Produces(MediaType.APPLICATION_JSON)
     fun checkToken(@Context headers: HttpHeaders): Response{
         val temp = headers.getRequestHeader("authorization").get(0) as String
@@ -122,7 +135,6 @@ class ServiceResource{
     //PURELY FOR TESTING PURPOSES: to decrypt the temp string
     @POST
     @Path("decryptSecret")
-    @RolesAllowed("superadmin")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     fun decrypt(body: String): Response{
@@ -140,7 +152,6 @@ class ServiceResource{
 
     @GET
     @Path("getServiceToken")
-    @RolesAllowed("superadmin") //testing for microservices
     @Produces(MediaType.APPLICATION_JSON)
     fun checkService(@QueryParam("tempSecret") temp: String?, @QueryParam("name") name: String): Response{
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -159,8 +170,12 @@ class ServiceResource{
             }
         }
         temp?.let{//if temp is not null
-            if(temp.equals(theString)) root.put("BearerToken", jwt)
-            return Response.ok().entity(root).build() //what if it does not work?
+            if(temp.equals(theString)) {
+                root.put("BearerToken", jwt)
+                return Response.ok().entity(root).build() //what if it does not work? empty json?
+            }
+            return Response.status(403).build()
+
         }
         //grab the temporary string in service account db and encrypt it. Then return it to them
         val cipher = Cipher.getInstance("RSA")

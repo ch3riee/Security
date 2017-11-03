@@ -133,9 +133,7 @@ class Login{
                 //create a new row in UserRole table
                 //find the role id for admin
                 val myList = ArrayList<String>()
-                myList.add("superadmin")
-                myList.add("guest")
-                myList.add("poweruser")
+                myList.add("admin")
                 Roles.select{
                     Roles.name.inList(myList)
                 }.forEach{

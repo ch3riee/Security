@@ -1,5 +1,3 @@
-
-
 CREATE TABLE IF NOT EXISTS Users (id serial PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, pwd VARCHAR(50));
 
 CREATE TABLE IF NOT EXISTS Roles (id serial PRIMARY KEY, rolename VARCHAR(50) NOT NULL UNIQUE);
@@ -14,57 +12,64 @@ CREATE TABLE IF NOT EXISTS Services (id serial PRIMARY KEY, servicename VARCHAR(
 
 CREATE TABLE IF NOT EXISTS ServiceRole (sid INT references Services(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE);
 
--- Service Roles
-INSERT INTO Roles(rolename) VALUES ('superadmin'), ('service'), ('serviceOwner'); --can change later, just for testing purposes
-
---INSERT INTO Services(servicename, serviceToken, publicKey) VALUES ('shoppingcart', )
-
-
---fake super admin user for testing purposes
-INSERT INTO Users(username, pwd) VALUES ('superadmin@gmail.com', 'j');
-WITH superadmin AS (
-   SELECT id FROM Users WHERE username = 'superadmin@gmail.com'
-), r2 AS (
-   SELECT id FROM Roles WHERE rolename = 'superadmin'
-)INSERT INTO UserRole(uid, roleid) SELECT r2.id, superadmin.id from r2, superadmin; --Giving it the superadmin role! So we can access services api
-
-
-
-
-
 
 -- User Roles
-INSERT INTO Roles(rolename) VALUES ('guest'), ('admin'), ('poweruser');
+INSERT INTO Roles(rolename) VALUES ('guest'), ('admin'), ('sessionOperator'), ('user'); --can add more operators later
 
-INSERT INTO Permissions(operation) VALUES ('user:create'), ('user:modify'),('user:delete'), ('device:create'),('device:modify')
- , ('device:delete'),('policy:create'),('policy:modify'), ('policy:delete')  ;
+
+INSERT INTO Permissions(operation) VALUES ('user:read'), ('user:modify'), ('device:read'),('device:modify')
+ , ('policy:read'),('policy:modify'), ('session:read'), ('session:modify'), ('demo:read'), ('demo:modify')  ;
+ --modify (create, update, delete)
+
 
 WITH u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:create'
-), guest AS (
-   SELECT id FROM Roles WHERE rolename = 'guest'
+   SELECT id FROM Permissions WHERE operation = 'session:read'
+), r AS (
+   SELECT id FROM Roles WHERE rolename = 'sessionOperator'
 )
-INSERT INTO RolePerm(pid, roleid) SELECT u1.id, guest.id from u1, guest; --guest user:create
+INSERT INTO RolePerm(pid, roleid) SELECT u1.id, r.id from u1, r; --sessionOperator session:read
+
+
+WITH u1 AS (
+   SELECT id FROM Permissions WHERE operation = 'session:modify'
+), r AS (
+   SELECT id FROM Roles WHERE rolename = 'sessionOperator'
+)
+INSERT INTO RolePerm(pid, roleid) SELECT u1.id, r.id from u1, r; --sessionOperator session:modify
+
+WITH u1 AS (
+   SELECT id FROM Permissions WHERE operation = 'session:read'
+), r AS (
+   SELECT id FROM Roles WHERE rolename = 'admin'
+)
+INSERT INTO RolePerm(pid, roleid) SELECT u1.id, r.id from u1, r; --admin session:read
+
+WITH u1 AS (
+   SELECT id FROM Permissions WHERE operation = 'session:modify'
+), r AS (
+   SELECT id FROM Roles WHERE rolename = 'admin'
+)
+INSERT INTO RolePerm(pid, roleid) SELECT u1.id, r.id from u1, r; --admin session:modify
 
 WITH u2 AS (
    SELECT id FROM Permissions WHERE operation = 'user:modify'
-), guest AS (
-   SELECT id FROM Permissions WHERE operation = 'guest')
-INSERT INTO RolePerm(pid, roleid) SELECT u2.id, guest.id from u2, guest; --guest user:modify
+), r AS (
+   SELECT id FROM Permissions WHERE operation = 'admin')
+INSERT INTO RolePerm(pid, roleid) SELECT u2.id, r.id from u2, r; --admin user:modify
 
 WITH u3 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:delete'
-), guest AS (
-   SELECT id FROM Permissions WHERE operation = 'guest')
-INSERT INTO RolePerm(pid, roleid) SELECT u3.id, guest.id from u3, guest; --guest user:delete
+   SELECT id FROM Permissions WHERE operation = 'user:read'
+), r AS (
+   SELECT id FROM Permissions WHERE operation = 'admin')
+INSERT INTO RolePerm(pid, roleid) SELECT u3.id, r.id from u3, r; --admin user:read
 
 WITH ad AS (
    SELECT id FROM Roles WHERE rolename = 'admin'
 ), d1 AS (
-   SELECT id FROM Permissions WHERE operation = 'device:create'
+   SELECT id FROM Permissions WHERE operation = 'device:read'
 )
 -- admin has device crud permissions
-INSERT INTO RolePerm(pid, roleid) SELECT d1.id, ad.id from d1, ad; --admin device:create
+INSERT INTO RolePerm(pid, roleid) SELECT d1.id, ad.id from d1, ad; --admin device:read
 
 WITH ad AS (
    SELECT id FROM Roles WHERE rolename = 'admin'
@@ -72,18 +77,12 @@ WITH ad AS (
    SELECT id FROM Permissions WHERE operation = 'device:modify'
 )INSERT INTO RolePerm(pid, roleid) SELECT d2.id, ad.id from d2, ad; --admin device:modify
 
-WITH ad AS (
-   SELECT id FROM Roles WHERE rolename = 'admin'
-), d3 AS (
-   SELECT id FROM Permissions WHERE operation = 'device:delete'
-)
-INSERT INTO RolePerm(pid, roleid) SELECT d3.id, ad.id from d3, ad; --admin device:delete
 
 WITH ad AS (
    SELECT id FROM Roles WHERE rolename = 'admin'
 ), p1 AS (
-   SELECT id FROM Permissions WHERE operation = 'policy:create'
-)INSERT INTO RolePerm(pid, roleid) SELECT p1.id, ad.id from p1, ad; --admin policy:create
+   SELECT id FROM Permissions WHERE operation = 'policy:read'
+)INSERT INTO RolePerm(pid, roleid) SELECT p1.id, ad.id from p1, ad; --admin policy:read
 
 WITH ad AS (
    SELECT id FROM Roles WHERE rolename = 'admin')
@@ -91,66 +90,21 @@ WITH ad AS (
    SELECT id FROM Permissions WHERE operation = 'policy:modify'
 )INSERT INTO RolePerm(pid, roleid) SELECT p2.id, ad.id from p2, ad; --admin policy:modify
 
-WITH ad AS (
-   SELECT id FROM Roles WHERE rolename = 'admin')
-, p3 AS (
-   SELECT id FROM Permissions WHERE operation = 'policy:delete'
-)INSERT INTO RolePerm(pid, roleid) SELECT p3.id, ad.id from p3, ad; --admin policy:delete
-
-WITH ad AS (
-   SELECT id FROM Roles WHERE rolename = 'admin')
-, u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:create'  --admin user:create
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, ad.id from u1, ad;
-
-WITH ad AS (
-   SELECT id FROM Roles WHERE rolename = 'admin')
-, u2 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:modify'  --admin user:modify
-)INSERT INTO RolePerm(pid, roleid) SELECT u2.id, ad.id from u2, ad;
-
-WITH ad AS (
-   SELECT id FROM Roles WHERE rolename = 'admin')
-, u2 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:delete'  --admin user:delete
-)INSERT INTO RolePerm(pid, roleid) SELECT u2.id, ad.id from u2, ad;
-
-
+WITH pu AS(
+   SELECT id FROM Roles WHERE rolename = 'user'
+),u1 AS (
+   SELECT id FROM Permissions WHERE operation = 'demo:read'
+)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu;   --user demo:read
 
 WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
+   SELECT id FROM Roles WHERE rolename = 'user'
 ),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:create'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu;   --poweruser user:create
+   SELECT id FROM Permissions WHERE operation = 'demo:modify'
+)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --user demo:modify
 
 WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
+   SELECT id FROM Roles WHERE rolename = 'guest'
 ),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:modify'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --poweruser user:modify
+   SELECT id FROM Permissions WHERE operation = 'demo:read'
+)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --guest demo:read
 
-WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
-),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'user:delete'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --poweruser user:delete
-
-WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
-),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'device:create'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --poweruser device:create
-
-
-WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
-),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'device:modify'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --poweruser device:modify
-
-
-WITH pu AS(
-   SELECT id FROM Roles WHERE rolename = 'poweruser'
-),u1 AS (
-   SELECT id FROM Permissions WHERE operation = 'device:delete'
-)INSERT INTO RolePerm(pid, roleid) SELECT u1.id, pu.id from u1, pu; --poweruser device:delete

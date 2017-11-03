@@ -11,6 +11,7 @@ import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import sun.security.rsa.RSAPublicKeyImpl
 import java.util.*
+import javax.annotation.security.RolesAllowed
 import javax.servlet.http.HttpServletRequest
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
@@ -48,8 +49,7 @@ class SessionDao{
             return Response.status(Response.Status.OK).entity(notFound).build()
             //means that theJson is null
         }
-        val invalid = mapper.createObjectNode().put("Token Error", "Invalid token error!")
-        return Response.status(Response.Status.FORBIDDEN).entity(invalid).build()
+        return Response.status(403).build()
     }
 
     //can we just check by comparing to db? Or is this way better for security
@@ -112,8 +112,7 @@ class SessionDao{
             return Response.ok().entity(mapper.readTree(a)).build()
         }
         //token was invalid
-        val invalid = mapper.createObjectNode().put("Token Error", "Invalid token error!")
-        return Response.status(Response.Status.FORBIDDEN).entity(invalid).build()
+        return Response.status(403).build()
 
     }
 

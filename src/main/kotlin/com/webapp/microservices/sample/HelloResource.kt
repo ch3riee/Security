@@ -6,7 +6,7 @@ import javax.ws.rs.core.Response.Status
 import javax.ws.rs.core.Response
 import javax.ws.rs.*
 
-@RolesAllowed("guest")
+@RolesAllowed(value = *arrayOf("user", "guest"))
 @Path("hello")
 class HelloResource {
 

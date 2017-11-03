@@ -5,14 +5,14 @@ import org.jetbrains.exposed.sql.*
 
 
 object Users : Table() {
-    val id = integer("id").autoIncrement("users_seq").primaryKey() // Column<Int>
+    val id = integer("id").autoIncrement().primaryKey() // Column<Int>
     val username = varchar("username",  50) // Column<String>
     val password = varchar("pwd", 50)
 
 }
 
 object Roles : Table() {
-    val id = integer("id").autoIncrement("roles_seq").primaryKey() // Column<Int>
+    val id = integer("id").autoIncrement().primaryKey() // Column<Int>
     val name = varchar("rolename", 50) // Column<String>
 }
 
@@ -32,7 +32,7 @@ object RolePerm: Table(){
 }
 
 object Services: Table(){
-    val id = integer("id").autoIncrement("services_seq").primaryKey()
+    val id = integer("id").autoIncrement().primaryKey()
     val sname = varchar("servicename", 50)
     val token = text("servicetoken")
     val pubKey = text("publickey")
