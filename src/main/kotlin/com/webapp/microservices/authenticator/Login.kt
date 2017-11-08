@@ -1,5 +1,7 @@
 package com.webapp.microservices.authenticator
 
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.SignatureAlgorithm
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 import javax.ws.rs.*
@@ -7,6 +9,8 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import sun.security.rsa.RSAPrivateCrtKeyImpl
+import java.util.*
 import javax.naming.InitialContext
 import javax.servlet.http.HttpServletRequest
 import javax.sql.DataSource
@@ -41,6 +45,11 @@ class Login{
                 "      To signup via application, please use the below link\n" +
                 "      <a href=\"/rest/login/signup\n\"> " +
                 "      Click here </a> to signup for application!</a>\n" +
+                "    </p>\n" +
+                "    <p>\n" +
+                "      To continue as guest, please click below\n" +
+                "      <a href =\" /rest/login/guest\n\"> " +
+                "      Click here </a> as guest</a>\n" +
                 "    </p>\n" +
                 "  </body>\n" +
                 "</html>").build()
@@ -96,6 +105,45 @@ class Login{
                 " </body>\n" +
                 "</html>").build()
     }
+
+    /*@GET
+    @Path("guest") //will have to fix
+    fun loginGuest(){
+        var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
+                .readText()
+                .toByteArray()
+        privateKey = Base64.getDecoder().decode(privateKey)
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        val perms = ArrayList<String>()
+        transaction {
+            Roles.select{
+                Roles.name.eq("guest")
+            }.forEach{
+                val rid = it[Roles.id]
+                RolePerm.select{
+                    RolePerm.roleid.eq(rid)
+                }.forEach{
+                    val p = it[RolePerm.pid]
+                    Permissions.select{
+                        Permissions.id.eq(p)
+                    }.forEach{
+                        perms.add(it[Permissions.operation])
+                    }
+                }
+            }
+        }
+        val myMap = HashMap<String, Any>()
+        myMap.put("Roles", arrayOf("guest"))
+        myMap.put("Permissions", perms.toTypedArray())
+        myMap.put("TokenType", "guest")
+        val jwt = Jwts.builder()
+                .setClaims(myMap)
+                .setSubject("")
+                .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
+                .compact()
+        //do we put this in a session
+    }*/
+
 
     @GET
     @Path("ssocallback")

@@ -21,6 +21,15 @@ INSERT INTO Permissions(operation) VALUES ('user:read'), ('user:modify'), ('devi
  , ('policy:read'),('policy:modify'), ('session:read'), ('session:modify'), ('demo:read'), ('demo:modify')  ;
  --modify (create, update, delete)
 
+INSERT INTO Users(username, pwd) VALUES ('admin@gmail.com', 'j');
+
+WITH superad AS (
+   SELECT id FROM Users WHERE username = 'admin@gmail.com'
+), r AS(
+   SELECT id FROM Roles where rolename = 'admin'
+) INSERT INTO UserRole(uid, roleid) SELECT superad.id, r.id from superad, r;
+
+
 
 WITH u1 AS (
    SELECT id FROM Permissions WHERE operation = 'session:read'
