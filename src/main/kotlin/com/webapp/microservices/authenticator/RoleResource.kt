@@ -18,6 +18,7 @@ class RoleResource{
 
     @GET
     @Path("create")
+    @Produces(MediaType.APPLICATION_JSON)
     fun createRoles(@QueryParam("name") roleName: String): Response {
        //add permission names later
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -25,31 +26,33 @@ class RoleResource{
             Roles.insert{
                 it[name] = roleName
             } //get Roles.id
-            for(r in Roles.selectAll()){
-                println("${r[Roles.id]}: ${r[Roles.name]}")
-            }
         }
-        return Response.ok().type("text/plain").entity("Successfully created new role " + roleName).build()
+        val mapper = ObjectMapper()
+        val node = mapper.createObjectNode()
+        node.put("Create Count", 1)
+        return Response.ok().entity(node).build()
 
     }
 
     @GET
     @Path("delete")
+    @Produces(MediaType.APPLICATION_JSON)
     fun deleteRoles(@QueryParam("name") roleName: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         transaction {
             Roles.deleteWhere{
                 Roles.name.eq(roleName)
             }
-            for(r in Roles.selectAll()){
-                println("${r[Roles.id]}: ${r[Roles.name]}")
-            }
         }
-        return Response.ok().type("text/plain").entity("Successfully deleted role " + roleName).build()
+        val mapper = ObjectMapper()
+        val node = mapper.createObjectNode()
+        node.put("Delete Count", 1)
+        return Response.ok().entity(node).build()
     }
 
     @GET
     @Path("assign")
+    @Produces(MediaType.APPLICATION_JSON)
     fun assignRoles(@QueryParam("rname") roleName: String,
                     @QueryParam("name") name: String, @QueryParam("type") type: String ): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -68,32 +71,38 @@ class RoleResource{
                     Services.sname.eq(name)
                 }.forEach{
                     id = it[Services.id]
+                    ServiceRole.insert{
+                        it[roleid] = rid
+                        it[sid] = id
+                    }
                 }
-                ServiceRole.insert{
-                    it[roleid] = rid
-                    it[sid] = id
-                }
+
             }
             else{
                 Users.select{
                     Users.username.eq(name)
                 }.forEach{
                     id = it[Users.id]
+                    UserRole.insert{
+                        it[roleid] = rid
+                        it[uid] = id
+                    }
                 }
-                UserRole.insert{
-                    it[roleid] = rid
-                    it[uid] = id
-                }
+
             }
         }
-        return Response.ok().type("text/plain").entity("Successfully assigned role " + roleName + "to " + name).build()
+        val mapper = ObjectMapper()
+        val node = mapper.createObjectNode()
+        node.put("Assign Count", 1)
+        return Response.ok().entity(node).build()
     }
 
     @Path("update")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     fun updateRole(@QueryParam("name") rname: String, body: String): Response{
-        val mapper = ObjectMapper() //assumes admin passed in json array of permissions in body of request
+        val mapper = ObjectMapper()
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -103,6 +112,11 @@ class RoleResource{
                 Roles.name.eq(rname)
             }.forEach{
                 rid = it[Roles.id]
+            }
+
+            //now delete all existing ones
+            RolePerm.deleteWhere{
+                RolePerm.roleid.eq(rid)
             }
 
             list.forEach({ e: String ->
@@ -115,15 +129,14 @@ class RoleResource{
                         it[pid] = id
                     }
             })
-            for(r in Permissions.selectAll()){
-                println("${r[Permissions.id]}: ${r[Permissions.operation]}")
-            }
         }
-        return Response.ok().type("text/plain").entity("Successfully updated role with new permissions").build()
+        val node = mapper.createObjectNode()
+        node.put("Update Count", 1)
+        return Response.ok().entity(node).build()
     }
 
     @GET
-    @Path("print")
+    @Path("print") //purely for testing purposes
     fun printPerms(): Response
     {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
