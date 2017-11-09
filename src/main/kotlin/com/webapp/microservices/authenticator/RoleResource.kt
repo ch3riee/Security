@@ -135,21 +135,4 @@ class RoleResource{
         return Response.ok().entity(node).build()
     }
 
-    @GET
-    @Path("print") //purely for testing purposes
-    fun printPerms(): Response
-    {
-        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
-        transaction {
-
-            for(r in Permissions.selectAll()){
-                println("${r[Permissions.id]}: ${r[Permissions.operation]}")
-            }
-
-            for(r in RolePerm.selectAll()){
-                println("${r[RolePerm.roleid]}: ${r[RolePerm.pid]}")
-            }
-        }
-        return Response.ok().build()
-    }
 }

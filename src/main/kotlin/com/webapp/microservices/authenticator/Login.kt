@@ -31,24 +31,24 @@ class Login{
                 "      Well, hello there!\n" +
                 "    </p>\n" +
                 "    <p>\n" +
-                "      To login via github, please use this link:\n" +
+                "      To login via github, please\n" +
                 "      <a href=\"https://github.com/login/oauth/authorize?redirect_uri=" +
                 "http://127.0.0.1:8080/rest/login/ssocallback&scope=user:email" +
                 "&client_id=c1371dc4d42722495100\n\">Click here</a> to login via SSO!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
-                "      To login via application, please use this link:\n" +
+                "      To login via application, please\n" +
                 "      <a href=\"/rest/login/local\n\">Click here" +
                 "      </a> to login locally!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
-                "      To signup via application, please use the below link\n" +
+                "      To signup via application, please\n" +
                 "      <a href=\"/rest/login/signup\n\"> " +
                 "      Click here </a> to signup for application!</a>\n" +
                 "    </p>\n" +
                 "    <p>\n" +
-                "      To continue as guest, please click below\n" +
-                "      <a href =\" /rest/login/guest\n\"> " +
+                "      To continue as guest, please\n" +
+                "      <a href =\" /rest/login/guestcallback\n\"> " +
                 "      Click here </a> as guest</a>\n" +
                 "    </p>\n" +
                 "  </body>\n" +
@@ -106,43 +106,10 @@ class Login{
                 "</html>").build()
     }
 
-    /*@GET
-    @Path("guest") //will have to fix
-    fun loginGuest(){
-        var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
-                .readText()
-                .toByteArray()
-        privateKey = Base64.getDecoder().decode(privateKey)
-        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
-        val perms = ArrayList<String>()
-        transaction {
-            Roles.select{
-                Roles.name.eq("guest")
-            }.forEach{
-                val rid = it[Roles.id]
-                RolePerm.select{
-                    RolePerm.roleid.eq(rid)
-                }.forEach{
-                    val p = it[RolePerm.pid]
-                    Permissions.select{
-                        Permissions.id.eq(p)
-                    }.forEach{
-                        perms.add(it[Permissions.operation])
-                    }
-                }
-            }
-        }
-        val myMap = HashMap<String, Any>()
-        myMap.put("Roles", arrayOf("guest"))
-        myMap.put("Permissions", perms.toTypedArray())
-        myMap.put("TokenType", "guest")
-        val jwt = Jwts.builder()
-                .setClaims(myMap)
-                .setSubject("")
-                .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
-                .compact()
-        //do we put this in a session
-    }*/
+    @GET
+    @Path("guestcallback") //will have to fix
+    fun callbackGuest(){
+    }
 
 
     @GET
@@ -181,7 +148,7 @@ class Login{
                 //create a new row in UserRole table
                 //find the role id for admin
                 val myList = ArrayList<String>()
-                myList.add("admin")
+                myList.add("user")
                 Roles.select{
                     Roles.name.inList(myList)
                 }.forEach{

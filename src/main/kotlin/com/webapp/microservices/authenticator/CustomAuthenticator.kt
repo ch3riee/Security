@@ -172,8 +172,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     //create a new row in UserRole table
                     //find the role id for admin
                     val myList = ArrayList<String>()
-                    myList.add("admin") //for testing purposes!
-                    myList.add("guest")
                     myList.add("user")
                     Roles.select {
                         Roles.name.inList(myList)
@@ -188,7 +186,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 authenticated = true
             }
         }
-        else{
+        else if (!username.equals("guest")){
             //this is a local authentication attempt, check database to see if credentials are correct
             Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
             transaction{
@@ -204,7 +202,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 }
             }
         }
-        if(!authenticated) return null
+        if(!authenticated && !username.equals("guest")) return null
 
         //if we made it this far than we have authenticated both sso and local login
         val user = createUserIdentity(user_email, password) as CustomUserIdentity?
@@ -212,12 +210,49 @@ class CustomAuthenticator() : LoginAuthenticator() {
             val session = (request as HttpServletRequest).getSession(true)
             session.setAttribute(SessionAuthentication.__J_AUTHENTICATED,
                     SessionAuthentication(authMethod, user, password))
-            session.setAttribute("JwtToken",generateJWT(user_email,flag ))
+            val jwt = if(username.equals("guest")) genGJWT() else genJWT(user_email, flag)
+            session.setAttribute("JwtToken",jwt)
         }
         return user
     }
 
-    fun generateJWT(email: String, flag: Boolean): String {
+    fun genGJWT(): String{
+        var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
+                .readText()
+                .toByteArray()
+        privateKey = Base64.getDecoder().decode(privateKey)
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        val perms = ArrayList<String>()
+        transaction {
+            Roles.select{
+                Roles.name.eq("guest")
+            }.forEach{
+                val rid = it[Roles.id]
+                RolePerm.select{
+                    RolePerm.roleid.eq(rid)
+                }.forEach{
+                    val p = it[RolePerm.pid]
+                    Permissions.select{
+                        Permissions.id.eq(p)
+                    }.forEach{
+                        perms.add(it[Permissions.operation])
+                    }
+                }
+            }
+        }
+        val myMap = HashMap<String, Any>()
+        myMap.put("Roles", arrayOf("guest"))
+        myMap.put("Permissions", perms.toTypedArray())
+        myMap.put("TokenType", "web:guest")
+        val jwt = Jwts.builder()
+                .setClaims(myMap)
+                .setSubject("guest")
+                .signWith(SignatureAlgorithm.RS512, RSAPrivateCrtKeyImpl.newKey(privateKey))
+                .compact()
+        return jwt
+    }
+
+    fun genJWT(email: String, flag: Boolean): String {
         val (roles, perms) = getRolesPerms(email)
         var privateKey = (this::class.java.classLoader).getResource("pki/Private.key")
                                                        .readText()
@@ -226,8 +261,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val myMap = HashMap<String, Any>()
         myMap.put("Roles", roles.toTypedArray())
         myMap.put("Permissions", perms.toTypedArray())
-        val type = if(flag) "sso" else "local"
-        myMap.put("LoginType", type)
+        val type = if(flag) "web:sso" else "web:local"
+        myMap.put("TokenType", type)
         return Jwts.builder()
                       .setClaims(myMap)
                       .setSubject(email)
@@ -257,7 +292,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val subject = Subject()
         subject.principals.add(userPrincipal)
         subject.privateCredentials.add(cred)
-        val roles = getRoles(user_name, pwd)
+        val roles = if(user_name.equals("guest") && pwd.equals("guest")) arrayListOf("guest") else getRoles(user_name, pwd)
         for (role in roles) {
                subject.principals.add(RolePrincipal(role))
             }
@@ -444,6 +479,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 user = login(username, password, request)
                 checked = true
             }
+            else if(isJGuest(uri)){
+                user = login("guest", "guest", request)
+                println(user)
+                checked = true
+            }
             session = request.getSession(false)
             if (user != null) {
                 // Redirect to original request
@@ -601,6 +641,18 @@ class CustomAuthenticator() : LoginAuthenticator() {
         return c == ';' || c == '#' || c == '/' || c == '?'
     }
 
+    fun isJGuest(uri: String): Boolean {
+        val jsc = uri.indexOf(__J_GUEST)
+
+        if (jsc < 0)
+            return false
+        val e = jsc + __J_GUEST.length
+        if (e == uri.length)
+            return true
+        val c = uri[e]
+        return c == ';' || c == '#' || c == '/' || c == '?'
+    }
+
     /* ------------------------------------------------------------ */
     fun isLoginOrErrorPage(pathInContext: String?): Boolean {
         return pathInContext != null && (pathInContext == _formErrorPath || pathInContext == _formLoginPath)
@@ -692,6 +744,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val __J_METHOD = "org.eclipse.jetty.security.form_METHOD"
         val __J_SECURITY_CHECK = "/rest/login/ssocallback"
         val __J_LOCAL = "/rest/login/localcallback"
+        val __J_GUEST = "/rest/login/guestcallback"
         val __J_USERNAME = "j_username"
         val __J_PASSWORD = "j_password"
     }
