@@ -9,9 +9,9 @@ import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
+import org.eclipse.jetty.server.Request
 import sun.security.rsa.RSAPublicKeyImpl
 import java.util.*
-import javax.annotation.security.RolesAllowed
 import javax.servlet.http.HttpServletRequest
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
@@ -26,13 +26,16 @@ class SessionDao{
     @GET
     @Path("get")
     @Produces(MediaType.APPLICATION_JSON)
-    fun get( @Context req: HttpServletRequest, @QueryParam("key") key :String,
-             @Context headers: HttpHeaders): Response {
+    @Suppress("UNCHECKED_CAST")
+    fun get(@Context req: HttpServletRequest, @QueryParam("key") key :String, @QueryParam("id") id: String,
+            @Context headers: HttpHeaders): Response {
         val temp = headers.getRequestHeader("authorization").get(0) as String
         val jwt = temp.substring(temp.indexOf(' ') + 1) //trims out bearer
         val mapper = ObjectMapper()
         (checkToken(jwt))?.let{
-            val session = req.getSession(false)
+            val request = req as Request
+            val sessionHandler = request.sessionHandler
+            val session = sessionHandler.getSession(id)
             val arr = key.split(".")
             val theJson = session.getAttribute(arr[0]) as String?
             theJson?.let {
@@ -41,7 +44,7 @@ class SessionDao{
                         .jsonProvider(JacksonJsonNodeJsonProvider())
                         .mappingProvider(JacksonMappingProvider())
                         .build()
-                val path = JsonPath.compile("$" + key!!.substring(1))
+                val path = JsonPath.compile("$" + key.substring(1))
                 val newJson: JsonNode = JsonPath.using(configuration).parse(data).read(path)
                 return Response.status(Response.Status.OK).entity(newJson).build()
             }
@@ -71,21 +74,24 @@ class SessionDao{
     @Produces(MediaType.APPLICATION_JSON) //can't explicitly say in request header that want json
     // only b/c login page is in html will say 406
     @Path("set")
-    fun set(@QueryParam("key") key :String, @Context req: HttpServletRequest, data: String,
-            @Context headers: HttpHeaders): Response {
+    @Suppress("UNCHECKED_CAST")
+    fun set(@QueryParam("key") key :String, @QueryParam("id") id: String, data: String,
+            @Context headers: HttpHeaders, @Context req: HttpServletRequest): Response {
         val tempStr = headers.getRequestHeader("authorization").get(0) as String
         val jwt = tempStr.substring(tempStr.indexOf(' ') + 1) //trims out bearer
         val mapper = ObjectMapper()
         (checkToken(jwt))?.let{
-            val session = req.getSession(false)
+            val request = req as Request
+            val sessionHandler = request.sessionHandler
+            val session = sessionHandler.getSession(id)
             val arr = key.split(".")
-            val currObj = session.getAttribute(arr[0]) as String?
+            val currObj = session?.getAttribute(arr[0]) as String?
 
             val theRoot = if(currObj == null) mapper.createObjectNode() else (
                     mapper.readTree(currObj))
             if(arr.size == 1 || theRoot.isArray())
             {
-                session.setAttribute(key, mapper.readTree(data).toString())
+                session?.setAttribute(key, mapper.readTree(data).toString())
             }
             else{
                 var curr: ObjectNode = theRoot as ObjectNode
@@ -105,10 +111,12 @@ class SessionDao{
                 val newJson: String? = JsonPath.using(configuration).parse(theRoot)
                         .put(JsonPath.compile("$" + key.substring(1,index)),
                                 key.substring(index + 1), mapper.readTree(data)).jsonString()
-                session.setAttribute(key.substring(0,1),newJson)
+                session?.setAttribute(key.substring(0,1),newJson)
+                sessionHandler.sessionCache.put(id, session)
+
             }
 
-            val a = session.getAttribute(key.substring(0,1)) as String //done this way for debugging purposes
+            val a = session?.getAttribute(key.substring(0,1)) as String //done this way for debugging purposes
             return Response.ok().entity(mapper.readTree(a)).build()
         }
         //token was invalid
