@@ -4,6 +4,7 @@ services:
     image: nginx
     volumes:
       - ./settings/nginx/conf.d:/etc/nginx/conf.d
+      - ./src/main/resources/static:/var/lib/static
     ports:
       - "8080:80"
     depends_on:
@@ -19,6 +20,7 @@ services:
       - db-account
     volumes:
       - ./:/app
+      - ./src/main/resources/pki/Public.key:/var/lib/pki-public
     working_dir: /app
     entrypoint: gradle run
 

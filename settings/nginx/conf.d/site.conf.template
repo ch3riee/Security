@@ -8,9 +8,22 @@ server {
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
+    #Web Section
+    #This section contains a sample application for web users
+
     location ~ /rest/login/* {
-        proxy_pass            http://srv-java-users:8081 ;
-    }
+            proxy_pass            http://srv-java-users:8081 ;
+        }
+
+     location ~ /rest/* {
+            if ($http_cookie !~ "JwtToken=") {
+               return 301 $scheme://$host:8080/rest/login ;
+            }
+            proxy_pass            http://srv-java-users:8081 ;
+        }
+
+    #Internal Section
+    #This section contains all the APIs provided to microservices to use
 
     location ~ /rest/session/* {
         if ($http_authorization = ""){
@@ -19,13 +32,15 @@ server {
         proxy_pass            http://srv-java-users:8081 ;
     }
 
-    location ~ /rest/* {
-        if ($http_cookie !~ "JwtToken=") {
-           return 301 $scheme://$host:8080/rest/login ;
-        }
-        proxy_pass            http://srv-java-users:8081 ;
+    #Static Content Section
+    #This section contains an example on serving static content
+    location /static/ {
+        alias /var/lib/static/ ;
+        index index.html ;
     }
 
+
+    #For any other unhandled urls
     location / {
         proxy_pass            http://srv-java-users:8081 ;
     }
