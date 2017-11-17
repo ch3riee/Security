@@ -19,98 +19,9 @@ docker-compose up
 http://127.0.0.1:8080/rest/hello
 ```
 This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/login
-## WEB USAGE
-### SIGNUP/LOGIN
-There are three separate options for logging in. 
-1) Login Locally: First press the signup link to signup for an account. Then follow the directions onscreen to login.
-2) Login SSO: Click on the github link to login via SSO through github. 
-3) Login Guest: Option to continue as guest role is available, note that any user information will not be saved. However
-you will still receive a session and JWT token like the other login options.
-```
-http://127.0.0.1:8080/rest/login
-```
-### LOGOUT
-```
-http://127.0.0.1:8080/rest/logout
-```
-Will logout of any sessions. Used for user accounts not service accounts!
-### WEB JWT TOKEN:
-JWT Token Web Types: web:local, web:sso, web:guest <br/>
-
-Once you login via one of these methods, the JWTToken will be placed inside of Cookie "JwtToken". To check the contents of
-this token, you can go to the http://127.0.0.1:8080/rest/checkJWT endpoint to see a printout of the contents.  <br/>
-NOTE: THIS IS ONLY FOR NORMAL USER/GUEST ACCOUNTS. NOT FOR SERVICE ACCOUNT JWTTOKENS!!!! <br/>
-## MICROSERVICE REGISTRATION/ SERVICE TOKEN
-NOTE: MUST BE AN ADMIN ROLE (Have user account with admin role assigned to it), IN ORDER TO REGISTER A NEW SERVICE ACCOUNT AND GET THE JWT TOKEN (Authorization bearer token)
-### Register new service account (as admin)
-Example  POST endpoint:
-```
-http://127.0.0.1:8080/rest/services/register?name=_____
-```
-The NAME query parameter: Pass in the name that you desire the Microservice to be called.<br/>
-Post body: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair). <br/>
-Your passed in Microservice's public key, will be used in order to encrypt a randomized tempSecret string. This is to make sure that any requests for the JWT Service Account token are only retrieved/used by the authorized Service Account. <br/>
-### Get the JWT Service Account Token
-```
-http://127.0.0.1:8080/rest/services/getServiceToken?name=_______&tempSecret=______
-```
-  tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered), to make sure you retrieve the right JWT token. <br/>
-  If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
-  In order to get the actual JWT token for your service account, you must decrypt the tempSecret string with your own private key (from the public key/private key pair) and call this API endpoint again with the decrypted string passed in tempSecret query param. If this tempSecret matches the one given, you will receive the JWT token inside of the Response body within a JSON object. 
-
-### USE THE JWT SERVICE ACCOUNT TOKEN
-  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/services/getServiceToken and place this into every
-request header for your microservice. <br/>
-Header name: authorization  
-Header content: Bearer [place jwt token here after a single white space]  
-**This token is required in order to use any of the Service APIS, such as the Session Get/Set API
-
-## SESSION GET/SET API
-**MUST HAVE SERVICE ACCOUNT TOKEN AS [authorization: Bearer nfjfkjbfkjbefkjebf] in header. You must also have sessionOperator role allowed inside of this token in order to get and set attributes inside of the session.
-### Get Attributes from Session
-```
-http://127.0.0.1:8080/rest/session/get?key=________
-```
-key query param: This param should be either the name of the attribute stored in the session, or the dotted notation json attribute path to the key you would like to retrieve. <br/>
-For example either myAttribute or myAttribute.a.b.c (the second will go into the attribute myAttribute and return the value of c). 
-
-### Set Attributes in Session
-```
-http://127.0.0.1:8080/rest/session/set?key=________
-```
-key query param: Same as the get Attribute key query param. Except that it will create the json objects if they do not exist. <br/>
-EXAMPLE: A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
-**You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)
-
-## ROLE CRUD API (Admin use only)
-This API allows someone with an Admin role, to create new roles (will save in DB), delete roles, update existing roles with new permissions, or assign roles to specific service accounts or user accounts(identified by name).
-### CREATE ROLE
-```
-http://127.0.0.1:8080/rest/role/create?name=_______
-```
-name query param: Name of the new role you want to add. 
-### DELETE ROLE
-```
-http://127.0.0.1:8080/rest/role/delete?name=_______
-```
-name query param: Name of role you want to delete from DB.
-### ASSIGN ROLE
-```
-http://127.0.0.1:8080/rest/role/assign?rname=_______&name=______&type=______
-```
-rname: Role name to assign  <br/>
-name: Either service account name or user's username <br/>
-type: service or user. <br/> **Must put "service" to identify it is a service account. Else it will always look in user accounts.
-### UPDATE ROLE
-``` 
-http://127.0.0.1:8080/rest/role/update?name=_______
-```
-name: Role name to update permissions on. All previous permissions will be replaced for this role. <br/>
-Request body: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
-
-## DOCKER-COMPOSE/ NGINX GATEWAY 
-Adding a microservice to this gateway is a two step process.
-### 1. Adding Microservices to Docker-Compose
+# Microservice Deployment Process + Shared Session Store Usage
+## Deploying Your Third Party Microservice
+### 1. Add Microservice to Docker-Compose
 Please read the following documentation at 
 ```
 https://docs.docker.com/compose/
@@ -160,6 +71,99 @@ EXAMPLE: Looks for /var/lib/static/index.html file and serves the content
         index index.html ;
     }
 ```
+### 3. Register Microservice (Admin only)
+**NOTE: MUST BE AN ADMIN ROLE (Have user account with admin role assigned to it), IN ORDER TO REGISTER A NEW SERVICE ACCOUNT AND GET THE JWT TOKEN (Authorization bearer token)**
+Example  POST endpoint:
+```
+http://127.0.0.1:8080/rest/services/register?name=_____
+```
+The NAME query parameter: Pass in the name that you desire the Microservice to be called.<br/>
+Post body: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair). <br/>
+Your passed in Microservice's public key, will be used in order to encrypt a randomized tempSecret string. This is to make sure that any requests for the JWT Service Account token are only retrieved/used by the authorized Service Account. <br/>
+### 4. Get Service Account Token
+```
+http://127.0.0.1:8080/rest/services/getServiceToken?name=_______&tempSecret=______
+```
+  tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered), to make sure you retrieve the right JWT token. <br/>
+  If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
+  In order to get the actual JWT token for your service account, you must decrypt the tempSecret string with your own private key (from the public key/private key pair) and call this API endpoint again with the decrypted string passed in tempSecret query param. If this tempSecret matches the one given, you will receive the JWT token inside of the Response body within a JSON object. </br>
+### 5. Use Service Account Token
+  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/services/getServiceToken and place this into every request header for your microservice. <br/>
+Header name: authorization  
+Header content: Bearer [place jwt token here after a single white space]  
+**This token is required in order to use any of the Service APIS, such as the Session Get/Set API </br>
+### 6. Utilizing Shared SessionStore
+The true benefit of using this API gateway, is that a session store and user store is already available to be used by all microservices deployed with it. This eliminates the problem of having to create/manage a session store within your microservice.
+#### Using Provided Login/ Logout
+If you have properly configured your microservice within NGINX and Docker, any request to your registered endpoints will bounce unauthenticated users to the shared Login page provided by the API gateway. </br>
+There are three separate options for logging in. 
+**Login: **
+```
+http://127.0.0.1:8080/rest/login
+```
+1) Login Locally: First press the signup link to signup for an account. Then follow the directions onscreen to login.
+2) Login SSO: Click on the github link to login via SSO through github. 
+3) Login Guest: Option to continue as guest role is available, note that any user information will not be saved. However
+you will still receive a session and JWT token like the other login options. </br>
+**Logout: **
+```
+http://127.0.0.1:8080/rest/logout
+```
+After your users have logged in, they will be provided a session along with a JWTtoken saved within Cookie "JwtToken". 
+**As the microservice, you must decrypt the JwtToken provided in EACH request by using the shared Public Key (mounted in Docker).** </br>
+##### Example Kotlin Code For Decrypting JWT Token
+cookie passed in parseClaimsJws(cookie) is the actual JwtToken cookie provided by the login action explained above.
+```
+ var publicKey = (this::class.java.classLoader).getResource("pki/Public.key").readText().toByteArray()
+        publicKey = Base64.getDecoder().decode(publicKey)
+        val res = Jwts.parser().setSigningKey(RSAPublicKeyImpl(publicKey)).parseClaimsJws(cookie).body
+        return Response.status(Status.OK).entity(res).build()
+```        
+If you are able to successfully decrypt the token with no exceptions, than this means that the user has been authenticated 
+and should be allowed into your service.
+#### Accessing SessionStore (Session API)
+In order to get/set into a specific user's session, you must have a reference to the user's session id that is passed into
+the Session API.
+**MUST HAVE SERVICE ACCOUNT TOKEN AS [authorization: Bearer nfjfkjbfkjbefkjebf] in header. You must also have sessionOperator role allowed inside of this token in order to get and set attributes inside of the session.**
+##### Get Attributes from Session
+```
+http://127.0.0.1:8080/rest/session/get?key=________&id=_________
+```
+**key query param**: This param should be either the name of the attribute stored in the session, or the dotted notation json attribute path to the key you would like to retrieve. <br/>
+**id query param**: This param is where you pass in the desired Session ID that you would like to get an attribute from. </br>
+For example either myAttribute or myAttribute.a.b.c (the second will go into the attribute myAttribute and return the value of c). 
 
-
+##### Set Attributes in Session
+```
+http://127.0.0.1:8080/rest/session/set?key=________&id=__________
+```
+**key query param**: Same as the get Attribute key query param. Except that it will create the json objects if they do not exist. <br/>
+**id query param**: This param is where you pass in the desired Session ID that you would like to set attribute into.
+EXAMPLE: A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
+**You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
+# Role Crud API (Admin use only)
+This API allows someone with an Admin role, to create new roles (will save in DB), delete roles, update existing roles with new permissions, or assign roles to specific service accounts or user accounts(identified by name).
+### CREATE ROLE
+```
+http://127.0.0.1:8080/rest/role/create?name=_______
+```
+name query param: Name of the new role you want to add. 
+### DELETE ROLE
+```
+http://127.0.0.1:8080/rest/role/delete?name=_______
+```
+name query param: Name of role you want to delete from DB.
+### ASSIGN ROLE
+```
+http://127.0.0.1:8080/rest/role/assign?rname=_______&name=______&type=______
+```
+rname: Role name to assign  <br/>
+name: Either service account name or user's username <br/>
+type: service or user. <br/> **Must put "service" to identify it is a service account. Else it will always look in user accounts.
+### UPDATE ROLE
+``` 
+http://127.0.0.1:8080/rest/role/update?name=_______
+```
+name: Role name to update permissions on. All previous permissions will be replaced for this role. <br/>
+Request body: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
 
