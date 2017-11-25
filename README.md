@@ -118,7 +118,6 @@ http://127.0.0.1:8080/rest/session/set?key=________&id=__________ </br>
 **id query param**: This param is where you pass in the desired Session ID that you would like to set attribute into.
 EXAMPLE: A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
 **You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
-
 ## Admin Section
 ### Register Microservice 
 Example  POST endpoint:
@@ -145,6 +144,7 @@ http://127.0.0.1:8080/rest/role/update?name=_______ </br>
 **Request body**: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
 ### Bootstrapping Initial Data
 If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql. 
+---
 ### EXAMPLE USAGE FOR MICROSERVICES (WIP)
 Please take a look at the SampleService repository located at https://github.com/ch3riee/SampleService/ for reference </br>
 #### 1. Please first register your microservice name and public key via an admin account.
