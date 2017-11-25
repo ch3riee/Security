@@ -143,7 +143,7 @@ http://127.0.0.1:8080/rest/role/update?name=_______ </br>
 **name**: Role name to update permissions on. All previous permissions will be replaced for this role. <br/>
 **Request body**: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
 ### Bootstrapping Initial Data
-If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql. 
+##### If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql. 
 ---
 ### EXAMPLE USAGE FOR MICROSERVICES (WIP)
 Please take a look at the SampleService repository located at https://github.com/ch3riee/SampleService/ for reference </br>
