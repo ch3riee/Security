@@ -144,4 +144,43 @@ http://127.0.0.1:8080/rest/role/update?name=_______ </br>
 **name**: Role name to update permissions on. All previous permissions will be replaced for this role. <br/>
 **Request body**: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
 ### Bootstrapping Initial Data
-If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql.  
+If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql. 
+### EXAMPLE USAGE FOR MICROSERVICES (WIP)
+Please take a look at the SampleService repository located at https://github.com/ch3riee/SampleService/ for reference </br>
+#### 1. Please first register your microservice name and public key via an admin account.
+Follow instructions as described up above to register microservice.
+**EXAMPLE FOR GENERATING PUBLIC/PRIVATE KEY PAIR (WIP)** </br>
+```
+KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+kpg.initialize(2048);
+KeyPair kp = kpg.generateKeyPair();
+Key pub = kp.getPublic();
+Key pvt = kp.getPrivate();
+```
+#### 2. Next you must first get your auto-generated encrypted tempSecret and decrypt it with your private key.
+**EXAMPLE for decrypting tempSecret using Cipher:** </br>
+```
+var privateKey = (this::class.java.classLoader).getResource("pki/sample/Private.key")
+                .readText()
+                .toByteArray()
+privateKey = Base64.getDecoder().decode(privateKey)
+val cipher2 = Cipher.getInstance("RSA")
+cipher2.init(Cipher.PRIVATE_KEY, RSAPrivateCrtKeyImpl.newKey(privateKey))
+val ret = cipher2.doFinal(DatatypeConverter.parseBase64Binary(root.get("tempSecret").textValue()))
+return String(ret)
+```
+Follow previous instructions for using Service Account API in order to exchange decrypted tempSecret string for Service Token
+#### 3. Save this Service Token somewhere secure and add as Authorization Bearer Token to every Service Account request.
+**EXAMPLE for making Service Account request to Session API Set using Mashape Unirest Library (WIP) **
+```
+val cartResponse = Unirest.post("http://srvjavausers:8081/rest/session/set/")
+                     .queryString("key", "shopping.user." + date)
+                     .header("Authorization", "bearer " +  "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1wbGUiLCJUb2tlblR5cGUiOiJzZXJ2aWNlIiwiUGVybWlzc2lvbnMiOlsic2Vzc2lvbjptb2RpZnkiLCJzZXNzaW9uOnJlYWQiXSwiUm9sZXMiOlsic2Vzc2lvbk9wZXJhdG9yIl19.J2COZvbU5vhD-AvURnowL0qUglvyMKqo41jlr0M8utET59bja9dofIzSIiwQslStB8vShSCkoNzjzPCIkwtT2")
+.body(json as com.mashape.unirest.http.JsonNode)
+.asJson()
+```
+**NOTE:** Example Service Account JWT Token has been truncated for example purposes </br>
+
+
+
+
