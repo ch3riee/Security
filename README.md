@@ -175,7 +175,7 @@ Follow previous instructions for using Service Account API in order to exchange 
 ```
 val cartResponse = Unirest.post("http://srvjavausers:8081/rest/session/set/")
                      .queryString("key", "shopping.user." + date)
-                     .header("Authorization", "bearer " +  "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1wbGUiLCJUb2tlblR5cGUiOiJzZXJ2aWNlIiwiUGVybWlzc2lvbnMiOlsic2Vzc2lvbjptb2RpZnkiLCJzZXNzaW9uOnJlYWQiXSwiUm9sZXMiOlsic2Vzc2lvbk9wZXJhdG9yIl19.J2COZvbU5vhD-AvURnowL0qUglvyMKqo41jlr0M8utET59bja9dofIzSIiwQslStB8vShSCkoNzjzPCIkwtT2")
+                     .header("Authorization", "bearer " +  "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1wbGUiLCJUb2tlblR5cic2Vzc2lvbk9wZXJhdG9yIl19.J2COZvbU5vhD-AvURnowL0qUglv")
 .body(json as com.mashape.unirest.http.JsonNode)
 .asJson()
 ```
