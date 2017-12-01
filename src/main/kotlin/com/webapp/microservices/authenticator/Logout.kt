@@ -7,6 +7,7 @@ import javax.ws.rs.*
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Cookie
 
+
 @Path("logout")
 class Logout{
 
@@ -17,6 +18,7 @@ class Logout{
             request.getSession(false).invalidate()
         }
         return Response.temporaryRedirect(URI("/rest/login")).build()
+
     }
 
 }

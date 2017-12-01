@@ -1,5 +1,6 @@
 package com.webapp.microservices.authenticator
 
+import com.mashape.unirest.http.Unirest
 import org.eclipse.jetty.servlet.ServletContextHandler
 import org.eclipse.jetty.servlet.ServletHolder
 import org.glassfish.jersey.servlet.ServletContainer
@@ -68,6 +69,15 @@ object App{
         val jndiName = "jdbc/userStore"
         val myDataSource = Resource("java:comp/env/" + jndiName, simpleDataSource)
         server.setAttribute("userStore", myDataSource)
+
+        val simpleDataSource2 = PGSimpleDataSource()
+        simpleDataSource2.serverName = "db-session"
+        simpleDataSource2.databaseName = "session"
+        simpleDataSource2.user = "jetty"
+        simpleDataSource2.password = "jettypass"
+        val jndiName2 = "jdbc/sessionStore"
+        val myDataSource2 = Resource("java:comp/env/" + jndiName2, simpleDataSource2)
+        server.setAttribute("sessionStore", myDataSource2)
 
         try{
             server.start()

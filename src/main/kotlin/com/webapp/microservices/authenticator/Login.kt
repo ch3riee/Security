@@ -15,6 +15,7 @@ import javax.naming.InitialContext
 import javax.servlet.http.HttpServletRequest
 import javax.sql.DataSource
 import javax.ws.rs.core.Cookie
+import javax.ws.rs.core.NewCookie
 
 
 @Path("login")
@@ -22,7 +23,49 @@ class Login{
 
     @GET
     @Produces("text/html")
-    fun loginGithub(): Response{
+    fun loginGithub(@Context request: HttpServletRequest): Response{
+        val saved = request.getQueryString()
+        //The cookie is only for the SSO caveat to make sure we have the correct original request url
+        val c = Cookie("j_uri", request.getParameter("j_uri"), "/", request.serverName)
+        if(saved != null && (request.getSession(false) == null))
+        {
+            //for the situation where jetty has no session prior to hit login page but nginx has already redirected
+            return Response.status(200).entity("<html>\n" +
+                    "  <head>\n" +
+                    "  </head>\n" +
+                    "  <body>\n" +
+                    "    <p>\n" +
+                    "      Well, hello there!\n" +
+                    "    </p>\n" +
+                    "    <p>\n" +
+                    "      To login via github, please\n" +
+                    "      <a href=\"https://github.com/login/oauth/authorize?redirect_uri=" +
+                    "http://127.0.0.1:8080/rest/login/ssocallback&scope=user:email" +
+                    "&client_id=c1371dc4d42722495100 \n\">Click here</a> to login via SSO!</a>\n" +
+                    "    </p>\n" +
+                    "    <p>\n" +
+                    "      To login via application, please enter login information below\n" +
+                    "   <form method=\"post\" action=\"/rest/login/localcallback" + "?" + saved + "\">" +
+                    "      <p>" +
+                    "        Email: <input type=\"email\" name=\"j_username\"/>" +
+                    "      </p>" +
+                    "      <p>" +
+                    "        Password : <input type=\"password\" name=\"j_password\" />" +
+                    "      </p>" +
+                    "      <input type=\"submit\" value=\"Login\" />" +
+                    "   </form>" +
+                    "    </p>\n" +
+                    "    <p>\n" +
+                    "      To continue as guest, please\n" +
+                    "      <a href =\" /rest/login/guestcallback" + "?" + saved + "\n\"> " +
+                    "      Click here </a> as guest</a>\n" +
+                    "    </p>\n" +
+                    "  </body>\n" +
+                    "</html>").cookie(NewCookie(c)).build()
+
+        }
+
+        //normal situation
         return Response.status(200).entity("<html>\n" +
                 "  <head>\n" +
                 "  </head>\n" +
@@ -38,13 +81,15 @@ class Login{
                 "    </p>\n" +
                 "    <p>\n" +
                 "      To login via application, please\n" +
-                "      <a href=\"/rest/login/local\n\">Click here" +
-                "      </a> to login locally!</a>\n" +
-                "    </p>\n" +
-                "    <p>\n" +
-                "      To signup via application, please\n" +
-                "      <a href=\"/rest/login/signup\n\"> " +
-                "      Click here </a> to signup for application!</a>\n" +
+                "   <form method=\"post\" action=\"/rest/login/localcallback\">" +
+                "      <p>" +
+                "        Email: <input type=\"email\" name=\"j_username\"/>" +
+                "      </p>" +
+                "      <p>" +
+                "        Password : <input type=\"password\" name=\"j_password\" />" +
+                "      </p>" +
+                "      <input type=\"submit\" value=\"Login\" />" +
+                "   </form>" +
                 "    </p>\n" +
                 "    <p>\n" +
                 "      To continue as guest, please\n" +
@@ -58,7 +103,8 @@ class Login{
     @GET
     @Path("local")
     @Produces("text/html")
-    fun loginLocal(): Response{
+    fun loginLocal(@Context request: HttpServletRequest): Response{
+        println("Inside loginlocal: " + request.requestURI)
         return Response.status(200).entity("<html>\n" +
                 " <head>\n" +
                 "   <title> Login Form </title>" +
@@ -79,36 +125,10 @@ class Login{
                 "</html>").build()
     }
 
-    @GET
-    @Path("signup")
-    @Produces("text/html")
-    fun signupLocal(): Response{
-        return Response.status(200).entity("<html>\n" +
-                " <head>\n" +
-                "   <title> SignUp Form </title>" +
-                "   <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">" +
-                " </head>\n" +
-                " <body>\n" +
-                "   <br />" +
-                "   <form method=\"post\" action=\"/rest/login/signupcallback\">" +
-                "     <p>" +
-                "       Please enter in email address that will be used as your username" +
-                "     </p>" +
-                "     <p>" +
-                "       Email: <input type=\"email\" name=\"j_username\"/>" +
-                "     </p>" +
-                "     <p>" +
-                "       Password : <input type=\"password\" name=\"j_password\" />" +
-                "     </p>" +
-                "     <input type=\"submit\" value=\"SignUp\" />" +
-                "   </form>" +
-                " </body>\n" +
-                "</html>").build()
-    }
 
     @GET
     @Path("guestcallback") //will have to fix
-    fun callbackGuest(){
+    fun callbackGuest(@Context request: HttpServletRequest){
     }
 
 
@@ -124,7 +144,7 @@ class Login{
         //this is where custom authenticator intercepts and tries to validate the local login request
     }
 
-    @POST
+    /*@POST
     @Path("signupcallback")
     @Consumes("application/x-www-form-urlencoded")
     fun callbackSignUp(@FormParam("j_username") email: String, @FormParam("j_password") pwd: String): Response{
@@ -201,7 +221,7 @@ class Login{
                 "    </p>\n" +
                 "  </body>\n" +
                 "</html>").build()
-    }
+    }*/
 
     @GET
     @Path("error")

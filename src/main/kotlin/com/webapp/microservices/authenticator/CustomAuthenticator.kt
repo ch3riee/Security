@@ -68,7 +68,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
     private var _formErrorPath: String? = null
     private var _formLoginPage: String? = null
     private var _formLoginPath: String? = null
-    private var _alwaysSaveUri: Boolean = false
+    private var _alwaysSaveUri: Boolean = true
     private var _dispatch: Boolean = false
 
     /* ------------------------------------------------------------ */
@@ -80,7 +80,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
      * See https://bugs.eclipse.org/bugs/show_bug.cgi?id=379909
      * @param alwaysSave true to always save the uri
      */
-    var alwaysSaveUri: Boolean = false
 
     /* ------------------------------------------------------------ */
     constructor(login: String?, error: String?, dispatch: Boolean) : this() {
@@ -419,11 +418,16 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //params (if it was a post).
         //
         //See Servlet Spec 3.1 sec 13.6.3
+        println("Inside of prepare request")
         val httpRequest = request as HttpServletRequest?
         val session = httpRequest!!.getSession(false)
-        if (session == null || session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) == null)
+        if (session == null || session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) == null) {
+            println("not authenticated yet no session or no sessionAuthentication so return")
+            //if in here then no session attribute yet for __J_URI
             return  //not authenticated yetv
+        }
         val juri = session.getAttribute(__J_URI) as String?
+        println("prepare " + httpRequest.requestURL)
         if (juri == null || juri.isEmpty())
             return  //no original uri saved
         val method = session.getAttribute(__J_METHOD) as String
@@ -447,13 +451,17 @@ class CustomAuthenticator() : LoginAuthenticator() {
     /* ------------------------------------------------------------ */
     @Throws(ServerAuthException::class)
     override fun validateRequest(req: ServletRequest, res: ServletResponse, mandatory: Boolean): Authentication {
+        println("inside of validateRequest")
         val request = req as HttpServletRequest
         val response = res as HttpServletResponse
         val base_request = Request.getBaseRequest(request)
         val base_response = base_request.response
         var uri: String? = request.requestURI
+        var savedURI: String? =  request.getParameter("j_uri") //added to save original request url
+
         if (uri == null)
             uri = URIUtil.SLASH
+
 
         if (isLoginOrErrorPage(URIUtil.addPaths(request.servletPath, request.pathInfo)) &&
                 !DeferredAuthentication.isDeferred(response))
@@ -465,11 +473,22 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (session == null) return Authentication.UNAUTHENTICATED
 
         try {
+            println("inside of try block")
             // Handle a request for authentication. )
             var user: UserIdentity? = null
             var checked = false
-            if (isJSecurityCheck(uri)) {
+            if (isJSSO(uri)) {
                 val tempCode = request.getParameter("code")
+                //below grabs the cookie we set in login page for original request uri
+                //only for SSO
+                val cookies = request.cookies
+                for(cookie: Cookie in cookies)
+                {
+                    if(cookie.name.equals("j_uri"))
+                    {
+                        savedURI = cookie.value
+                    }
+                }
                 checked = true
                 user = login(tempCode, "", request)
             }
@@ -480,6 +499,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 checked = true
             }
             else if(isJGuest(uri)){
+                println("inside of guest before guest login")
                 user = login("guest", "guest", request)
                 println(user)
                 checked = true
@@ -491,11 +511,22 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 var form_auth = CustomAuthentication(authMethod, user)
                 synchronized(session) {
                     nuri = session!!.getAttribute(__J_URI) as String?
-                    if (nuri == null || nuri!!.isEmpty() ||
-                            nuri!!.contains("/rest/login/")) {
-                        nuri = "/rest/login/success"
+                     if(nuri == null || nuri!!.isEmpty())
+                    {
+                        if(savedURI != null)
+                        {
+                            nuri = savedURI
+                        }
+                        else
+                        {
+                            nuri = "/rest/login/success"
+                        }
+
                         if (nuri!!.isEmpty())
+                        {
+                            println("slash: " + URIUtil.SLASH)
                             nuri = URIUtil.SLASH
+                        }
                     }
                 }
 
@@ -505,9 +536,10 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 c.path = "/"
                 response.addCookie(c)
 
-                val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                    HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))
+                /*val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                    HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER*/
+                /*base_response.sendRedirect(redirectCode, response.encodeRedirectURL(nuri))*/
+                res.sendRedirect( nuri)
                 return form_auth
             }//if login was successful will return here
             else if (checked == true){
@@ -523,8 +555,8 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                     dispatcher.forward(FormRequest(request), FormResponse(response))
                 } else {
-                    val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
+                   /* val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
+                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER*/
                     //base_response.sendRedirect(redirectCode,
                     //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                     res.sendRedirect(_formErrorPage)
@@ -535,6 +567,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
             // Look for cached authentication
             val authentication = session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
+                println("inside of cached authentication section")
                 // Has authentication been revoked?
                 if (authentication is Authentication.User &&
                         _loginService != null &&
@@ -547,6 +580,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                             //check if the request is for the same url as the original and restore
                             //params if it was a post
                             LOG.debug("auth retry {}->{}", authentication, j_uri)
+                            println("first buf: " + request.requestURL)
                             val buf = request.requestURL
                             if (request.queryString != null)
                                 buf.append("?").append(request.queryString)
@@ -565,12 +599,22 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
             // remember the current URI
             synchronized(session) {
+                println("remembering the current uri before we send the challenge")
                 // But only if it is not set already, or we save every uri that leads to a login form redirect
                 if (session!!.getAttribute(__J_URI) == null || _alwaysSaveUri) {
+
                     val buf = request.requestURL
-                    if (request.queryString != null)
+                    if (request.queryString != null && (!request.queryString.contains("j_uri")))
                         buf.append("?").append(request.queryString)
-                    session!!.setAttribute(__J_URI, buf.toString())
+                    //added below lines just to grab original request url if jetty did not save it correctly
+                    if(savedURI != null)
+                    {
+                        session!!.setAttribute(__J_URI, savedURI)
+                    }
+                    else{
+                        session!!.setAttribute(__J_URI, uri)
+                    }
+
                     session!!.setAttribute(__J_METHOD, request.method)
 
                     if (MimeTypes.Type.FORM_ENCODED.`is`(req.getContentType())
@@ -590,9 +634,13 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                 dispatcher.forward(FormRequest(request), FormResponse(response))
             } else {
+                //regex match to make sure login service does not redirect back to login page
+                //otherwise authenticator always redirects
                 val regex = Regex("/login(?=/|$)")
                 val match = regex.containsMatchIn(uri)
-                if (match != false)
+                val regex2 = Regex("/session(?=/|$)")
+                val match2 = regex2.containsMatchIn(uri)
+                if (match != false || match2 != false)
                 {
                    //we do not want to redirect or send the challenge
                     return Authentication.NOT_CHECKED
@@ -602,9 +650,18 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                     HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
                 //base_response.sendRedirect(redirectCode,
-                //        response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
-                res.sendRedirect(_formLoginPage)
+                  //    response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
+                //added below for saving original request, last changed code location
+                if(savedURI != null)
+                {
+                    res.sendRedirect(_formLoginPage + "?" + "j_uri=" + savedURI)
+                }
+                else{
+                    res.sendRedirect(_formLoginPage + "?" + "j_uri=" + uri)
+                }
+
             }
+            println("about to go to send-continue")
             return Authentication.SEND_CONTINUE
             //this ends the try block
         } catch (e: IOException) {
@@ -617,12 +674,12 @@ class CustomAuthenticator() : LoginAuthenticator() {
     }
 
     /* ------------------------------------------------------------ */
-    fun isJSecurityCheck(uri: String): Boolean {
-        val jsc = uri.indexOf(__J_SECURITY_CHECK)
+    fun isJSSO(uri: String): Boolean {
+        val jsc = uri.indexOf(__J_SSO)
 
         if (jsc < 0)
             return false
-        val e = jsc + __J_SECURITY_CHECK.length
+        val e = jsc + __J_SSO.length
         if (e == uri.length)
             return true
         val c = uri[e]
@@ -742,7 +799,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val __J_URI = "org.eclipse.jetty.security.form_URI"
         val __J_POST = "org.eclipse.jetty.security.form_POST"
         val __J_METHOD = "org.eclipse.jetty.security.form_METHOD"
-        val __J_SECURITY_CHECK = "/rest/login/ssocallback"
+        val __J_SSO = "/rest/login/ssocallback"
         val __J_LOCAL = "/rest/login/localcallback"
         val __J_GUEST = "/rest/login/guestcallback"
         val __J_USERNAME = "j_username"

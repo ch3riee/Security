@@ -44,6 +44,22 @@ object ServiceRole: Table(){
     val roleid = (integer("roleid") references Roles.id)
 }
 
+object JettySessions: Table(){
+    val  id = varchar("sessionid", 120)
+    val cPath = varchar("contextpath", 60)
+    val virtual = varchar("virtualhost", 60)
+    val lnode = varchar("lastnode", 60)
+    val aTime = long("accesstime")
+    val laTime = long("lastaccesstime")
+    val createTime = long("createtime")
+    val cookieTime = long("cookietime")
+    val lsTime = long("lastsavedtime")
+    val eTime = long("expirytime")
+    val maxInt = long("maxinterval")
+    val map = blob("map")
+
+
+}
 
 
 
