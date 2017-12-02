@@ -29,7 +29,7 @@ class RoleResource{
         }
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
-        node.put("Create Count", 1)
+        node.put("Create Role Count", 1)
         return Response.ok().entity(node).build()
 
     }
@@ -46,7 +46,7 @@ class RoleResource{
         }
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
-        node.put("Delete Count", 1)
+        node.put("Delete Role Count", 1)
         return Response.ok().entity(node).build()
     }
 
@@ -93,7 +93,7 @@ class RoleResource{
         }
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
-        node.put("Assign Count", 1)
+        node.put("Assign Role Count", 1)
         return Response.ok().entity(node).build()
     }
 
@@ -131,7 +131,7 @@ class RoleResource{
             })
         }
         val node = mapper.createObjectNode()
-        node.put("Update Count", 1)
+        node.put("Update Role Count", 1)
         return Response.ok().entity(node).build()
     }
 

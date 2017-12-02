@@ -418,16 +418,13 @@ class CustomAuthenticator() : LoginAuthenticator() {
         //params (if it was a post).
         //
         //See Servlet Spec 3.1 sec 13.6.3
-        println("Inside of prepare request")
         val httpRequest = request as HttpServletRequest?
         val session = httpRequest!!.getSession(false)
         if (session == null || session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) == null) {
-            println("not authenticated yet no session or no sessionAuthentication so return")
             //if in here then no session attribute yet for __J_URI
             return  //not authenticated yetv
         }
         val juri = session.getAttribute(__J_URI) as String?
-        println("prepare " + httpRequest.requestURL)
         if (juri == null || juri.isEmpty())
             return  //no original uri saved
         val method = session.getAttribute(__J_METHOD) as String
@@ -451,7 +448,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
     /* ------------------------------------------------------------ */
     @Throws(ServerAuthException::class)
     override fun validateRequest(req: ServletRequest, res: ServletResponse, mandatory: Boolean): Authentication {
-        println("inside of validateRequest")
         val request = req as HttpServletRequest
         val response = res as HttpServletResponse
         val base_request = Request.getBaseRequest(request)
@@ -473,7 +469,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         if (session == null) return Authentication.UNAUTHENTICATED
 
         try {
-            println("inside of try block")
             // Handle a request for authentication. )
             var user: UserIdentity? = null
             var checked = false
@@ -499,9 +494,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 checked = true
             }
             else if(isJGuest(uri)){
-                println("inside of guest before guest login")
                 user = login("guest", "guest", request)
-                println(user)
                 checked = true
             }
             session = request.getSession(false)
@@ -524,7 +517,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
                         if (nuri!!.isEmpty())
                         {
-                            println("slash: " + URIUtil.SLASH)
                             nuri = URIUtil.SLASH
                         }
                     }
@@ -567,7 +559,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             // Look for cached authentication
             val authentication = session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
-                println("inside of cached authentication section")
                 // Has authentication been revoked?
                 if (authentication is Authentication.User &&
                         _loginService != null &&
@@ -580,7 +571,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                             //check if the request is for the same url as the original and restore
                             //params if it was a post
                             LOG.debug("auth retry {}->{}", authentication, j_uri)
-                            println("first buf: " + request.requestURL)
                             val buf = request.requestURL
                             if (request.queryString != null)
                                 buf.append("?").append(request.queryString)
@@ -599,7 +589,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
 
             // remember the current URI
             synchronized(session) {
-                println("remembering the current uri before we send the challenge")
                 // But only if it is not set already, or we save every uri that leads to a login form redirect
                 if (session!!.getAttribute(__J_URI) == null || _alwaysSaveUri) {
 
@@ -661,7 +650,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 }
 
             }
-            println("about to go to send-continue")
             return Authentication.SEND_CONTINUE
             //this ends the try block
         } catch (e: IOException) {
