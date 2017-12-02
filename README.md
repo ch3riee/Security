@@ -17,7 +17,9 @@ docker-compose up
 ### 3. Example Rest Endpoint 
 To check if working, go to http://127.0.0.1:8080/rest/hello </br>
 This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/login </br>
+
 ## Deploying Your Third Party Microservice and Using  Shared SessionStore
+
 ### 1. Add Microservice to Docker-Compose
 Please read the following documentation at https://docs.docker.com/compose/ to learn about docker-compose. </br>
 In order to add your microservice to the api gateway, a separate container for your microservice must be added to the
@@ -76,19 +78,19 @@ http://127.0.0.1:8080/rest/service/getServiceToken?name=_______&tempSecret=_____
   Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/service/getServiceToken and place this into every request header for your microservice. <br/>
 Header name: authorization  
 Header content: Bearer [place jwt token here after a single white space]  
-**This token is required in order to use any of the Service APIS, such as the Session Get/Set API </br>
+**This token is required in order to use any of the Service APIS, such as the Session Get/Set API** </br>
 ### 5. Utilizing Shared SessionStore
 The true benefit of using this API gateway, is that a session store and user store is already available to be used by all microservices deployed with it. This eliminates the problem of having to create/manage a session store within your microservice.
 #### Using Provided Login/ Logout
 If you have properly configured your microservice within NGINX and Docker, any request to your registered endpoints will bounce unauthenticated users to the shared Login page provided by the API gateway. </br>
 There are three separate options for logging in. 
-**Login: **
+**Login:**
 http://127.0.0.1:8080/rest/login </br>
 1) Login Locally: First press the signup link to signup for an account. Then follow the directions onscreen to login.
 2) Login SSO: Click on the github link to login via SSO through github. 
 3) Login Guest: Option to continue as guest role is available, note that any user information will not be saved. However
 you will still receive a session and JWT token like the other login options. </br>
-**Logout: ** 
+**Logout:** 
 http://127.0.0.1:8080/rest/logout </br>
 After your users have logged in, they will be provided a session along with a JWTtoken saved within Cookie "JwtToken". 
 **As the microservice, you must decrypt the JwtToken provided in EACH request by using the shared Public Key (mounted in Docker).** </br>
