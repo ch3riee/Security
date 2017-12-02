@@ -245,12 +245,15 @@ return String(ret)
 Follow previous instructions for using Service Account API in order to exchange decrypted tempSecret string for Service Token
 #### 3. Save this Service Token somewhere secure and add as Authorization Bearer Token to every Service Account request.
 **EXAMPLE for making Service Account request to Session API Set using Mashape Unirest Library (WIP) **
-```
-val cartResponse = Unirest.post("http://srvjavausers:8081/rest/session/set/")
-                     .queryString("key", "shopping.user." + date)
-                     .header("Authorization", "bearer " +  "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1wbGUiLCJUb2tlblR5cic2Vzc2lvbk9wZXJhdG9yIl19.J2COZvbU5vhD-AvURnowL0qUglv")
-.body(json as com.mashape.unirest.http.JsonNode)
-.asJson()
+```  
+val cartResponse= Unirest.post("http://srvjavausers:8081/rest/session/set/")
+                         .queryString("key", "a")
+                         .queryString("id", "node016nwsi9xkhztj1sm70gw8lmy4g1" )
+                         .header("Content-Type", "application/json")
+                         .header("authorization", "bearer " + "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1UiLCJUb9.J2CXyY1gkQT6azg")
+                         .body(mapper.writeValueAsString(mapper.readTree(body)))
+                         .asString() //using .asJson() requires knowing the proper json format, safer to use asString
+val jsonObj = cartResponse.rawBody
 ```
 *NOTE:* Example Service Account JWT Token has been truncated for example purposes </br>
 
