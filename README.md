@@ -58,22 +58,22 @@ if($Http_authorization= ""){
 https://www.nginx.com/resources/admin-guide/serving-static-content/ </br>
   When serving static content, a root or alias path must be set in the location block. If you would like to use the current static folder to serve your content, without altering any docker-compose volume mounts, please place all static content within the /resources/static folder in the project folder. This will be mapped to /var/lib/static/ within the NGINX docker container. </br>
   **NOTE**: If static content is placed somewhere else, please set this as a volume mount within the NGINX docker container in docker-compose file. The path within the docker container itself is the one that should be passed as the alias or root. </br>
-EXAMPLE: Looks for /var/lib/static/index.html file and serves the content
+EXAMPLE: Looks for /var/lib/static/index.html file and serves the content for context root -> http://127.0.0.1:8080/
 ```
 #Static Section
-location /static/ {
+location / {
     alias /var/lib/static/ ;
     index index.html ;
 }
 ```
 ### 3. Get Service Account Token
-**NOTE**: Please make sure your microservice has already been registered by an admin prior to this step!
-http://127.0.0.1:8080/rest/services/getServiceToken?name=_______&tempSecret=______  </br>
-  tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered), to make sure you retrieve the right JWT token. <br/>
+**NOTE**: Please make sure your microservice has already been created by an admin prior to this step!
+http://127.0.0.1:8080/rest/service/getServiceToken?name=_______&tempSecret=______  </br>
+  tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered account under), to make sure you retrieve the right JWT token. <br/>
   If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
   In order to get the actual JWT token for your service account, you must decrypt the tempSecret string with your own private key (from the public key/private key pair) and call this API endpoint again with the decrypted string passed in tempSecret query param. If this tempSecret matches the one given, you will receive the JWT token inside of the Response body within a JSON object. </br>
 ### 4. Use Service Account Token
-  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/services/getServiceToken and place this into every request header for your microservice. <br/>
+  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/service/getServiceToken and place this into every request header for your microservice. <br/>
 Header name: authorization  
 Header content: Bearer [place jwt token here after a single white space]  
 **This token is required in order to use any of the Service APIS, such as the Session Get/Set API </br>
@@ -119,20 +119,85 @@ http://127.0.0.1:8080/rest/session/set?key=________&id=__________ </br>
 EXAMPLE: A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
 **You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
 ## Admin Section
-### Register Microservice 
+---
+### Service Account Crud API
+**NOTE: ASSIGNING NEW ROLES TO SERVICE ACCOUNT IS DONE VIA ROLE CRUD API**
+#### CREATE SERVICE ACCOUNT
 Example  POST endpoint:
-http://127.0.0.1:8080/rest/services/register?name=_____ </br>
+http://127.0.0.1:8080/rest/service/create?name=_____ </br>
 **The NAME query parameter**: Pass in the name that you desire the Microservice to be called.<br/>
-**Request body**: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair). <br/>
+**Request body**: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair) as part of a json object with the key name being "publickey". <br/>
 Your passed in Microservice's public key, will be used in order to encrypt a randomized tempSecret string. This is to make sure that any requests for the JWT Service Account token are only retrieved/used by the authorized Service Account. <br/>
+*Example Body Format*
+```
+{ 
+  "publickey": "Your public key"
+}
+```
+#### READ SERVICE ACCOUNT(S)
+Example GET endpoint:
+http://127.0.0.1:8080/rest/service/read?name=_____ </br>
+**The NAME query parameter (optional)**: Pass in specific Service Account name you would like to retrieve information on. If left out, all services will be returned in a json object. </br>
+#### UPDATE SERVICE ACCOUNT
+Example POST endpoint:
+http://127.0.0.1:8080/rest/service/update?name=_____ </br>
+**The NAME query paranmeter**: Pass in name of service account you would like to update with a new public key. </br>
+**Request body**: Pass in Microservice's own RSA public key (please generate your own public key/private key pair), and pass it in a json object in the same format as creating a service account.
+*Example Body Format*
+```
+{
+   "publickey": "Your public key"
+}
+```
+#### DELETE SERVICE ACCOUNT
+EXAMPLE GET endpoint:
+http://127.0.0.1:8080/rest/service/delete?name=_____ </br>
+**The NAME query parameter**: Pass in specific Service Account name you would like to delete </br>
+---
+### User Account Crud API
+**NOTE: ASSIGNING NEW ROLES TO USER ACCOUNT IS DONE VIA ROLE CRUD API**
+#### CREATE USER ACCOUNT
+EXAMPLE POST endpoint:
+http://127.0.0.1:8080/rest/user/create </br>
+**Request body**: Pass in both the "username" and "password" within a json object in the format of the below example. </br>
+*Example Body Format*
+```
+{
+   "username" : "example@gmail.com",
+   "password" : "mypassword
+}
+```
+#### READ USER ACCOUNT
+EXAMPLE GET endpoint:
+http://127.0.0.1:8080/rest/user/read?name=_____ </br>
+**The NAME query parameter (optional)**: Pass in a specific User Account you would like to retrieve information from. If this
+query parameter is left out, will retrieve information for all user accounts. </br>
+#### UPDATE USER ACCOUNT
+EXAMPLE POST endpoint:
+http://127.0.0.1:8080/rest/user/update?name=_____ </br>
+**The NAME query parameter**: Pass in User Account name that you would like to update with a new password </br>
+**Request Body**: Within a json object, using key "password", pass in your desired new password. </br>
+*Example Body Format*
+```
+{
+  "password": "my new password"
+}
+```
+#### DELETE USER ACCOUNT
+EXAMPLE GET endpoint:
+http://127.0.0.1:8080/rest/user/delete?name=_____ </br>
+**The NAME query parameter**: Pass in a specific User Account you would like to delete </br>
+---
 ### Role Crud API 
 This API allows someone with an Admin role, to create new roles (will save in DB), delete roles, update existing roles with new permissions, or assign roles to specific service accounts or user accounts(identified by name).
 #### CREATE ROLE
 http://127.0.0.1:8080/rest/role/create?name=_______ </br>
 **name query param**: Name of the new role you want to add. 
 #### DELETE ROLE
-http://127.0.0.1:8080/rest/role/delete?name=_______ </br>
-**name query param**: Name of role you want to delete from DB.
+http://127.0.0.1:8080/rest/role/delete?rname=______&name=______&type=_______ </br>
+**rname query param**: Name of role you want to delete from DB.
+**name query param (optional)**: Specific User Account or Service Account you want to delete this role from
+**type query param (needed if passing in name query)**: Pass in "service" to specify for Service Accounts, any other string will count as User Account.
 #### ASSIGN ROLE
 http://127.0.0.1:8080/rest/role/assign?rname=_______&name=______&type=______ </br>
 **rname**: Role name to assign  <br/>
@@ -180,7 +245,11 @@ val cartResponse = Unirest.post("http://srvjavausers:8081/rest/session/set/")
 .asJson()
 ```
 **NOTE:** Example Service Account JWT Token has been truncated for example purposes </br>
-
+---
+### ADDITIONAL COMMENTS
+1. If a call to the APIs returns an NGINX generated 404, this means that NGINX is missing this static content, or there is no existing configuration location for this URI. </br>
+2. If a call to the APIs returns a JETTY generated 404, this means that there is a missing API implementation. </br>
+3. For SSO login via github, regardless of original request before redirect to login page, a successful login will take you to the Login Success page. For any of the other login options, successful login will redirect you to your original request page.
 
 
 
