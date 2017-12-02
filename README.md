@@ -119,9 +119,10 @@ http://127.0.0.1:8080/rest/session/set?key=________&id=__________ </br>
 EXAMPLE: A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
 **You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
 ## Admin Section
+
 ---
 ### Service Account Crud API
-**NOTE: ASSIGNING NEW ROLES TO SERVICE ACCOUNT IS DONE VIA ROLE CRUD API**
+*NOTE: ASSIGNING NEW ROLES TO SERVICE ACCOUNT IS DONE VIA ROLE CRUD API*
 #### CREATE SERVICE ACCOUNT
 Example  POST endpoint:
 http://127.0.0.1:8080/rest/service/create?name=_____ </br>
@@ -152,10 +153,11 @@ http://127.0.0.1:8080/rest/service/update?name=_____ </br>
 #### DELETE SERVICE ACCOUNT
 EXAMPLE GET endpoint:
 http://127.0.0.1:8080/rest/service/delete?name=_____ </br>
-**The NAME query parameter**: Pass in specific Service Account name you would like to delete </br>
+**The NAME query parameter**: Pass in specific Service Account name you would like to delete 
+
 ---
 ### User Account Crud API
-**NOTE: ASSIGNING NEW ROLES TO USER ACCOUNT IS DONE VIA ROLE CRUD API**
+*NOTE: ASSIGNING NEW ROLES TO USER ACCOUNT IS DONE VIA ROLE CRUD API*
 #### CREATE USER ACCOUNT
 EXAMPLE POST endpoint:
 http://127.0.0.1:8080/rest/user/create </br>
@@ -187,6 +189,7 @@ http://127.0.0.1:8080/rest/user/update?name=_____ </br>
 EXAMPLE GET endpoint:
 http://127.0.0.1:8080/rest/user/delete?name=_____ </br>
 **The NAME query parameter**: Pass in a specific User Account you would like to delete </br>
+
 ---
 ### Role Crud API 
 This API allows someone with an Admin role, to create new roles (will save in DB), delete roles, update existing roles with new permissions, or assign roles to specific service accounts or user accounts(identified by name).
@@ -209,6 +212,7 @@ http://127.0.0.1:8080/rest/role/update?name=_______ </br>
 **Request body**: Please pass in a JSON array with the permission names. The whole array of permissions will be set to this role. <br/>
 ### Bootstrapping Initial Data
 ##### If you would like to bootstrap the initial Role, User, and Permission data for the database, please append/insert SQL commands into init.sql. 
+
 ---
 ### EXAMPLE USAGE FOR MICROSERVICES (WIP)
 Please take a look at the SampleService repository located at https://github.com/ch3riee/SampleService/ for reference </br>
@@ -244,7 +248,8 @@ val cartResponse = Unirest.post("http://srvjavausers:8081/rest/session/set/")
 .body(json as com.mashape.unirest.http.JsonNode)
 .asJson()
 ```
-**NOTE:** Example Service Account JWT Token has been truncated for example purposes </br>
+*NOTE:* Example Service Account JWT Token has been truncated for example purposes </br>
+
 ---
 ### ADDITIONAL COMMENTS
 1. If a call to the APIs returns an NGINX generated 404, this means that NGINX is missing this static content, or there is no existing configuration location for this URI. </br>
