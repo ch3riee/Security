@@ -10,11 +10,18 @@ This diagram shows the callstack for handling an Http Request. </br>
 ```
 git clone https://github.com/ch3riee/Security.git .
 ```
-### 2. Inside of the project folder, run command for Docker-Compose to start up the gateway/server
+### 2. Pip install with the requirements.txt located within /util/requirements.txt
+This is only necessary if you do not have psycopg2 version 2.7.3.2 installed. </br>
+Set up your virtual env first if desired.  </br>
+Used in order to dump your service account token.
+```
+pip install -r requirements.txt
+```
+### 3. Inside of the project folder, run command for Docker-Compose to start up the gateway/server
 ```
 docker-compose up
 ```
-### 3. Example Rest Endpoint 
+### 4. Example Rest Endpoint 
 To check if working, go to http://127.0.0.1:8080/rest/hello </br>
 This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/login </br>
 
