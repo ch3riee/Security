@@ -107,11 +107,9 @@ class SessionDao{
         val jwt = tempStr.substring(tempStr.indexOf(' ') + 1) //trims out bearer
         val mapper = ObjectMapper()
         (checkToken(jwt))?.let{
-            println("checktoken")
             val request = req as Request
             val sessionHandler = request.sessionHandler
             val session = sessionHandler.getSession(id)
-            println("session is: " + session)
             val arr = key.split(".")
             val currObj = session?.getAttribute(arr[0]) as String?
 
@@ -119,12 +117,9 @@ class SessionDao{
                     mapper.readTree(currObj))
             if(arr.size == 1)
             {
-               println(data)
                 session?.setAttribute(key, mapper.readTree(data).toString())
-                println("The attribute is: " + session?.getAttribute(arr[0]) as String?)
             }
             else{
-                println("or in here")
                 var curr: ObjectNode = theRoot as ObjectNode
                 var i = 1
                 while(i < arr.size - 1){
@@ -144,11 +139,9 @@ class SessionDao{
                         .put(JsonPath.compile("$" + key.substring(first,index)),
                                 key.substring(index + 1), mapper.readTree(data)).jsonString()
                 session?.setAttribute(key.substring(0,1),newJson)
-                println("The attribute is: " + session?.getAttribute(key.substring(0,1)) as String?)
                 sessionHandler.sessionCache.put(id, session)
 
             }
-            println("ending")
             val a = session?.getAttribute(arr[0]) as String? //done this way for debugging purposes
             return Response.ok().entity(mapper.readTree(a)).build()
         }
@@ -160,14 +153,15 @@ class SessionDao{
     @GET
     @Path("print")
     @Suppress("UNCHECKED_CAST")
+    //This method is purely for debugging purposes
     fun getSessions(){
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/sessionStore") as DataSource)
         transaction {
             for (s in JettySessions.selectAll()) {
                 println("${s[JettySessions.id]}")
-                val byteIn = ObjectInputStream(s[JettySessions.map].binaryStream)
-                val data2 =  byteIn.readObject() as Map<String, Any>
-                println(data2)
+                //val byteIn = ObjectInputStream(s[JettySessions.map].binaryStream)
+                //val data2 =  byteIn.readObject() as Map<String, Any>
+                //println(data2)
             }
 
         }
