@@ -280,9 +280,13 @@ Follow previous instructions for using Service Account API in order to exchange 
 #### 3. Save this Service Token somewhere secure and add as Authorization Bearer Token to every Service Account request.
 **EXAMPLE for making Service Account request to Session API Set using Mashape Unirest Library (WIP) **
 ```  
+//grab the JSESSIONID cookie in order to get the session ID for current user.
+//here is an example of what it looks like and how to parse
+val cookie = node0za9a8csxs4xi1ri5w49vo97qd1.node0 
+//drop the .node0 to get correct session id
 val cartResponse= Unirest.post("http://srvjavausers:8081/rest/session/set/")
                          .queryString("key", "a")
-                         .queryString("id", "node016nwsi9xkhztj1sm70gw8lmy4g1" )
+                         .queryString("id", cookie.split('.').get(0))
                          .header("Content-Type", "application/json")
                          .header("authorization", "bearer " + "eyJhbGciOiJSUzUxMiJ9.eyJzdWIiOiJzYW1UiLCJUb9.J2CXyY1gkQT6azg")
                          .body(mapper.writeValueAsString(mapper.readTree(body)))
