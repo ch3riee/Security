@@ -52,15 +52,22 @@ class SessionDao{
             val arr = key.split(".")
             val theJson = session.getAttribute(arr[0]) as String?
             theJson?.let {
-                val data =  mapper.readTree(theJson)
-                val configuration = Configuration.builder()
-                        .jsonProvider(JacksonJsonNodeJsonProvider())
-                        .mappingProvider(JacksonMappingProvider())
-                        .build()
-                val path = JsonPath.compile("$" + key.substring(1))
-                val newJson: JsonNode = JsonPath.using(configuration).parse(data).read(path)
-                return Response.status(Response.Status.OK).entity(newJson).build()
-            }
+                if(arr.size > 1)
+                {
+                    val data =  mapper.readTree(theJson)
+                    val configuration = Configuration.builder()
+                            .jsonProvider(JacksonJsonNodeJsonProvider())
+                            .mappingProvider(JacksonMappingProvider())
+                            .build()
+
+                    val path = JsonPath.compile("$" + key.substring(1))
+                    val newJson: JsonNode = JsonPath.using(configuration).parse(data).read(path)
+                    return Response.status(Response.Status.OK).entity(newJson).build()
+                }
+
+                return Response.ok().entity(theJson).build()
+                }
+
             val notFound = mapper.createObjectNode().put("Error", "Attribute was not found in the session!")
             return Response.status(Response.Status.OK).entity(notFound).build()
             //means that theJson is null
@@ -110,9 +117,11 @@ class SessionDao{
 
             val theRoot = if(currObj == null) mapper.createObjectNode() else (
                     mapper.readTree(currObj))
-            if(arr.size == 1 || theRoot.isArray())
+            if(arr.size == 1)
             {
+               println(data)
                 session?.setAttribute(key, mapper.readTree(data).toString())
+                println("The attribute is: " + session?.getAttribute(arr[0]) as String?)
             }
             else{
                 println("or in here")
@@ -129,17 +138,18 @@ class SessionDao{
                         .jsonProvider(JacksonJsonNodeJsonProvider())
                         .mappingProvider(JacksonMappingProvider())
                         .build()
+                val first = key.indexOf('.')
                 val index = key.lastIndexOf('.')
                 val newJson: String? = JsonPath.using(configuration).parse(theRoot)
-                        .put(JsonPath.compile("$" + key.substring(1,index)),
+                        .put(JsonPath.compile("$" + key.substring(first,index)),
                                 key.substring(index + 1), mapper.readTree(data)).jsonString()
                 session?.setAttribute(key.substring(0,1),newJson)
-                println(session?.getAttribute(key.substring(0,1)) as String?)
+                println("The attribute is: " + session?.getAttribute(key.substring(0,1)) as String?)
                 sessionHandler.sessionCache.put(id, session)
 
             }
             println("ending")
-            val a = session?.getAttribute(key.substring(0,1)) as String //done this way for debugging purposes
+            val a = session?.getAttribute(arr[0]) as String? //done this way for debugging purposes
             return Response.ok().entity(mapper.readTree(a)).build()
         }
         //token was invalid
