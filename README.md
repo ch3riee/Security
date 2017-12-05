@@ -70,12 +70,39 @@ location / {
 ```
 ### 3. Get Service Account Token
 **NOTE**: Please make sure your microservice has already been created by an admin prior to this step!
+
+---
+
+**I. VIA ADMIN API:**
 http://127.0.0.1:8080/rest/service/getServiceToken?name=_______&tempSecret=______  </br>
   tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered account under), to make sure you retrieve the right JWT token. <br/>
   If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
   In order to get the actual JWT token for your service account, you must decrypt the tempSecret string with your own private key (from the public key/private key pair) and call this API endpoint again with the decrypted string passed in tempSecret query param. If this tempSecret matches the one given, you will receive the JWT token inside of the Response body within a JSON object. </br>
+  
+---
+
+**II. VIA ONE-TIME PYTHON DUMP SCRIPT**
+If you do not have an admin account, you can still obtain the Service Token of a existing Service Account (created by Admin) </br>
+STEPS:</br>
+a) Start API gateway via command line in detached mode, within the project root. </br>
+```
+docker-compose up -d
+```
+b) List all currently running docker containers, after the gateway has started up. </br>
+```
+docker ps
+```
+c) Locate the running container for Postgres Name: res_db-account_1. Find the local host port for the container.
+EXAMPLE PORT: 0.0.0.0:35085->5432/tcp </br>
+In this case port 35085. </br>
+d) Within the project directory, go into /settings/python. Run dump_token.py passing in your Service name as command line arg. </br>
+```
+python dump_token.py sample
+```
+**NOTE: sample is the Service Account name. This python script requires psycopg2 python module in order to connect to postgres DB** </br>
+This step will dump your Service Token into the console. Please save this token somewhere secure. Usage process described below for Service Token.
 ### 4. Use Service Account Token
-  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/service/getServiceToken and place this into every request header for your microservice. <br/>
+  Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/service/getServiceToken, or from the console output, and place this into every request header for your microservice. <br/>
 Header name: authorization  
 Header content: Bearer [place jwt token here after a single white space]  
 **This token is required in order to use any of the Service APIS, such as the Session Get/Set API** </br>
