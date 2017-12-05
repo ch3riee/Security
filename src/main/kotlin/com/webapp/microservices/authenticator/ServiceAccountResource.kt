@@ -24,7 +24,6 @@ import javax.ws.rs.core.Response
 import javax.xml.bind.DatatypeConverter
 
 @Path("service")
-@RolesAllowed("admin")
 class ServiceAccountResource {
 
 
@@ -32,6 +31,7 @@ class ServiceAccountResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("create")
+    @RolesAllowed("admin")
     fun createService(@QueryParam("name") name: String, body: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()

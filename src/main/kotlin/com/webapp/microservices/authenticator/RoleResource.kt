@@ -37,11 +37,46 @@ class RoleResource{
     @GET
     @Path("delete")
     @Produces(MediaType.APPLICATION_JSON)
-    fun deleteRoles(@QueryParam("name") roleName: String): Response {
+    fun deleteRoles(@QueryParam("rname") roleName: String, @QueryParam("name") name: String?,
+                    @QueryParam("type") type: String?): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         transaction {
-            Roles.deleteWhere{
-                Roles.name.eq(roleName)
+            if(name != null){
+                var rid = 0
+                Roles.select{
+                    Roles.name.eq(roleName)
+                }.forEach{
+                    rid = it[Roles.id]
+                }
+                if(type == "service"){
+                  var sid = 0
+                  Services.select{
+                      Services.sname.eq(name)
+                  }.forEach{
+                      sid = it[Services.id]
+                  }
+                  ServiceRole.deleteWhere{
+                      ServiceRole.roleid.eq(rid) and ServiceRole.sid.eq(sid)
+                  }
+
+                }
+                else{
+                    //type User Account
+                    var uid = 0
+                    Users.select{
+                        Users.username.eq(name)
+                    }.forEach{
+                        uid = it[Users.id]
+                    }
+                    UserRole.deleteWhere{
+                        UserRole.roleid.eq(rid) and UserRole.uid.eq(uid)
+                    }
+                }
+            }
+            else{
+                Roles.deleteWhere{
+                    Roles.name.eq(roleName)
+                }
             }
         }
         val mapper = ObjectMapper()
