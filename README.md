@@ -1,7 +1,7 @@
 
 # Nginx Gateway and Jetty-based Session/User Store
 An api gateway for microservices that utilizes Nginx, Jetty, and Jersey. Provides a session store, user store, along with 
-authorization and authentication features. Contained within Docker Containers.
+authorization and authentication features. Contained within Docker Containers for easy deployment and ease of development for Microservices.
 ## Request Diagram
 This diagram shows the callstack for handling an Http Request. </br>
 ![Alt text](diagram.png?raw=true "Request Class Path Diagram")
