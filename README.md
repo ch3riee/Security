@@ -88,21 +88,7 @@ a) Start API gateway via command line in detached mode, within the project root.
 ```
 docker-compose up -d
 ```
-b) List all currently running docker containers, after the gateway has started up. </br>
-```
-docker ps
-```
-c) Locate the running container for Postgres Name: res_db-account_1. Find the local host port for the container.
-EXAMPLE PORT: 0.0.0.0:35085->5432/tcp </br>
-In this case port 35085. </br>
-d) Within the project directory, change directories into /settings/python. Open dump_token.py and locate the line
-```
-try:
-	conn_string = "host='localhost' port=35073'' dbname='account' user='jetty' password= 'jettypass'"
-```
-Change the port number into the one you found in the docker ps step. This will ensure you are able to connect to the account
-db. Save the file. </br>
-e) Run dump_token.py passing in your Service name as command line arg. </br>
+d) Within the project directory, change directories into /settings/python. Run dump_token.py passing in your Service name as command line arg. </br>
 ```
 python dump_token.py sample
 ```
