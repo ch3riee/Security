@@ -1,0 +1,3 @@
+FROM openjdk:8
+ADD ./build/libs/rest-1.0-SNAPSHOT-all.jar rest-1.0-SNAPSHOT-all.jar
+ENTRYPOINT ["java","-jar","rest-1.0-SNAPSHOT-all.jar"]

@@ -7,7 +7,7 @@ def main():
 		print("Please enter in your service name")
 		return
 	try:
-		conn_string = "host='localhost' port=35073'' dbname='account' user='jetty' password= 'jettypass'"
+		conn_string = "host='localhost' port=5433'' dbname='account' user='jetty' password= 'jettypass'"
 		conn = psycopg2.connect(conn_string)
 		cur = conn.cursor()
 		try:
