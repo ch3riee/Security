@@ -31,6 +31,7 @@ gradle-app.setting
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
+!rest-1.0-SNAPSHOT-all.jar
 
 # Cache of project
 .gradletasknamecache
