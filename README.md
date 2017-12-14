@@ -78,7 +78,7 @@ check in order to guard against unauthenticated users from accessing service res
 ---
 
 ## Section: Using Shared Session Store, Authentication, Authorization
-### 1. CREATE SERVICE ACCOUNT (Requires Admin Role)
+### 1. Create Service Account (Requires Admin Role)
 If you have admin role access, please use this API in order to register your microservice. Otherwise please have an admin follow these steps. Must have a service account in order to use the shared session store. </br>
 Example  POST endpoint:
 http://127.0.0.1:8080/rest/service/create?name=_____ </br>
@@ -91,7 +91,7 @@ Your passed in Microservice's public key, will be used in order to encrypt a ran
   "publickey": "Your public key"
 }
 ```
-### 2. RETRIEVE SERVICE ACCOUNT TOKEN (via Admin)
+### 2. Retrieve Service Account Token (via Admin)
 http://127.0.0.1:8080/rest/service/getServiceToken?name=_______&tempSecret=______  </br>
   tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered account under), to make sure you retrieve the right JWT token. <br/>
   If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
@@ -115,12 +115,12 @@ python dump_token.py sample
 ```
 **NOTE: sample is the Service Account name. This python script requires psycopg2 python module in order to connect to postgres DB** </br>
 This step will dump your Service Token into the console. Please save this token somewhere secure. Usage process described below for Service Token. </br>
-### 4. USE SERVICE ACCOUNT JWT TOKEN
+### 4. Use Service Account JWT Token
 Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/service/getServiceToken, or from the console output, and place this into every request header for your microservice. <br/>
 **Header name**: authorization  
 **Header content**: Bearer [place jwt token here after a single white space]  
 *This token is required in order to use any of the Service APIS, such as the Session Get/Set API* </br>
-### 5. USE SHARED SESSION STORE API
+### 5. Use Shared Session Store API
 In order to get/set into a specific user's session, you must have a reference to the user's session id that is passed into the Session API. </br>
 *Prior to this step please follow step 4 and put [authorization: Bearer nfjfkjbfkjbefkjebf] in header. You must also have sessionOperator role allowed inside of this token in order to get and set attributes inside of the session.* </br>
 #### a) Get Attributes from Session
@@ -134,7 +134,7 @@ http://127.0.0.1:8080/rest/session/set?key=________&id=__________ </br>
 **id query param**: This param is where you pass in the desired Session ID that you would like to set attribute into. </br>
 **EXAMPLE** : A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
 **You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
-### 6. USER AUTHENTICATION
+### 6. User Authentication
 If you have properly configured your microservice within NGINX and Docker, any request to your registered endpoints will bounce unauthenticated users to the shared Login page provided by the API gateway. </br>
 There are three separate options for users to login  at http://127.0.0.1:8080/rest/login and one way for users to logout at http://127.0.0.1:8080/rest/logout. </br>
 #### 1) Login Locally
@@ -145,7 +145,7 @@ Click on the github link to login via SSO through Github.  </br>
 Option to continue as guest role is available, note that any user information will not be saved. However you will still receive a session and JWT token like the other login options. </br>
 #### 4) Logout
 Logout by calling http://127.0.0.1:8080/rest/logout. This will invalidate the user’s session </br>
-### 7. USE USER JWT TOKEN + AUTHORIZATION
+### 7. Use User JWT Token + Authorization
 #### a) Decrypt User JWT Token Via JJWT Lib
 Grab the user’s JwtToken cookie, which is automatically set by the authentication service for all authenticated users who have logged in. We are using Java JJWT library located at https://github.com/jwtk/jjwt. Please add this library as a gradle dependency prior to attempting to decrypt JWT Token if following our decryption example. </br>
 ```
