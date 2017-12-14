@@ -152,9 +152,17 @@ return Response.status(Status.OK).entity(res).build()
 If you are able to successfully decrypt the token with no exceptions, than this means that the user has been authenticated and should be allowed into your service. </br>
 #### b) Authorization 
 Our gateway service allows all microservices to customize their own authorization handling process. In order to gain access to user permissions, you must first decrypt the user JWT Token (Step a. of this section). Within this decrypted JWT token, you will find information on the user’s roles and permissions. Please use this data to create your own custom authorization validation service within your microservice, in order to enforce permissions. One possible way to do this is to use these permissions in creating your own security annotations. </br>
-## Jetty Request Diagram
+## Section: ADMIN API REFERENCE
+For detailed API reference please look at Reference.md file located within this repository. </br>
+## Section: JETTY REQUEST DIAGRAM
 If you would like more details on how the Jetty Server (Authentication Server/ Admin API Server) handles requests please look at this following diagram. This diagram shows the callstack for handling an Http Request. </br>
 ![Alt text](diagram.png?raw=true "Request Class Path Diagram")
+</br>
+## Section: ADDITIONAL COMMENTS
+1. If a call to the APIs returns an NGINX generated 404, this means that NGINX is missing this static content, or there is no existing configuration location for this URI. </br>
+2. If a call to the APIs returns a JETTY generated 404, this means that there is a missing API implementation. </br>
+3. For SSO login via github, regardless of original request before redirect to login page, a successful login will take you to the Login Success page. For any of the other login options, successful login will redirect you to your original request page. </br>
+
 
 
 
