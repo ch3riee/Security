@@ -141,6 +141,7 @@ class RoleResource{
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        var count = 0
         transaction {
             var rid = 0
             Roles.select{
@@ -149,24 +150,27 @@ class RoleResource{
                 rid = it[Roles.id]
             }
 
-            //now delete all existing ones
             RolePerm.deleteWhere{
                 RolePerm.roleid.eq(rid)
             }
 
+            var id = 0
             list.forEach({ e: String ->
-                    val id = Permissions.insert {
-                        it[operation] = e
-                    } get Permissions.id
-
-                    RolePerm.insert {
-                        it[roleid] = rid
-                        it[pid] = id
+                    Permissions.select{
+                        Permissions.operation.eq(e)
+                    }.forEach{
+                        id = it[Permissions.id]
+                        RolePerm.insert {
+                            it[roleid] = rid
+                            it[pid] = id
+                        }
+                        count += 1
                     }
             })
+
         }
         val node = mapper.createObjectNode()
-        node.put("Update Role Count", 1)
+        node.put("Update Role Count", count)
         return Response.ok().entity(node).build()
     }
 
