@@ -25,6 +25,7 @@ services:
     volumes:
       - ./:/app
       - ./src/main/resources/pki/Public.key:/var/lib/pki-public
+      - ./build/libs/rest-1.0-SNAPSHOT-all.jar:/rest-1.0-SNAPSHOT-all.jar
 
   #srvjavausers:
    # restart: always
