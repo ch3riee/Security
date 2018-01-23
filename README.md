@@ -25,7 +25,7 @@ The built jar is automatically placed within ./build/libs/rest-1.0-SNAPSHOT-all.
 ```
 docker-compose restart srvjavausers
 ```
-This will restart the container housing the gateway, replacing the original jar file bundled within the DockerFile with the new one. Thus allowing the changes to be seen.
+This will restart the container housing the gateway, replacing the original jar file bundled within the DockerFile with the new one. Thus allowing the code changes to be applied.
 ## STATIC CONTENT DEPLOYMENT
 ### 1. Saving Your Static Content </br>
 Save static content into /resources/static folder inside of the downloaded project folder to easily serve static files. Or save into folder of your choice.
