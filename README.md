@@ -15,6 +15,17 @@ docker-compose up
 ### 3. Example Rest Endpoint 
 To check if working, go to http://127.0.0.1:8080/rest/hello </br>
 This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/login </br>
+## DOCKER
+### 1. Brief Notes On Making Changes To This Gateway's  Java Jar File </br>
+This security gateway and all of its features have been bundled together into a Java jar file that is mounted into a DockerFile, which is then included within the docker-compose.yml file under the container srvjavausers. The Java jar was built using the library shadowJar using the command:
+```
+./gradlew shadowJar
+```
+The built jar is automatically placed within ./build/libs/rest-1.0-SNAPSHOT-all.jar. When local changes are made to the security gateway, after docker-compose up has been called, you must run this gradle command in order to bundle changes into a new Java jar. Enter the command:
+```
+docker-compose restart srvjavausers
+```
+This will restart the container housing the gateway, replacing the original jar file bundled within the DockerFile with the new one. This will allow the changes to be seen.
 ## STATIC CONTENT DEPLOYMENT
 ### 1. Saving Your Static Content </br>
 Save static content into /resources/static folder inside of the downloaded project folder to easily serve static files. Or save into folder of your choice.
