@@ -454,7 +454,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val base_response = base_request.response
         var uri: String? = request.requestURI
         var savedURI: String? =  request.getParameter("j_uri") //added to save original request url
-
         if (uri == null)
             uri = URIUtil.SLASH
 
@@ -504,7 +503,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 var form_auth = CustomAuthentication(authMethod, user)
                 synchronized(session) {
                     nuri = session!!.getAttribute(__J_URI) as String?
-                     if(nuri == null || nuri!!.isEmpty())
+                     if(nuri == null || nuri!!.isEmpty() || nuri!!.contains("logout"))
                     {
                         if(savedURI != null)
                         {
@@ -512,7 +511,7 @@ class CustomAuthenticator() : LoginAuthenticator() {
                         }
                         else
                         {
-                            nuri = "/rest/login/success"
+                            nuri = "/rest/public/gateway/session/login/success"
                         }
 
                         if (nuri!!.isEmpty())
@@ -559,7 +558,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
             // Look for cached authentication
             val authentication = session.getAttribute(SessionAuthentication.__J_AUTHENTICATED) as Authentication?
             if (authentication != null) {
-                // Has authentication been revoked?
                 if (authentication is Authentication.User &&
                         _loginService != null &&
                         !_loginService.validate(authentication.userIdentity)) {
@@ -625,9 +623,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
             } else {
                 //regex match to make sure login service does not redirect back to login page
                 //otherwise authenticator always redirects
-                val regex = Regex("/login(?=/|$)")
+                val regex = Regex("/public/gateway/session/login(?=/|$)")
                 val match = regex.containsMatchIn(uri)
-                val regex2 = Regex("/session(?=/|$)")
+                val regex2 = Regex("/internal/gateway/session(?=/|$)")
                 val match2 = regex2.containsMatchIn(uri)
                 if (match != false || match2 != false)
                 {
@@ -787,9 +785,9 @@ class CustomAuthenticator() : LoginAuthenticator() {
         val __J_URI = "org.eclipse.jetty.security.form_URI"
         val __J_POST = "org.eclipse.jetty.security.form_POST"
         val __J_METHOD = "org.eclipse.jetty.security.form_METHOD"
-        val __J_SSO = "/rest/login/ssocallback"
-        val __J_LOCAL = "/rest/login/localcallback"
-        val __J_GUEST = "/rest/login/guestcallback"
+        val __J_SSO = "/rest/callback/gateway/ssocallback"
+        val __J_LOCAL = "/rest/callback/gateway/localcallback"
+        val __J_GUEST = "/rest/callback/gateway/guestcallback"
         val __J_USERNAME = "j_username"
         val __J_PASSWORD = "j_password"
     }

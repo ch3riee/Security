@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.*
 import javax.ws.rs.core.MediaType
 
 
-@Path("role")
+@Path("public/gateway/role")
 @RolesAllowed("admin")
 class RoleResource{
 
@@ -173,5 +173,12 @@ class RoleResource{
         node.put("Update Role Count", count)
         return Response.ok().entity(node).build()
     }
+
+
+
+
+
+
+
 
 }

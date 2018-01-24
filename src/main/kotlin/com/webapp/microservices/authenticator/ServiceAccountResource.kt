@@ -23,7 +23,7 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 import javax.xml.bind.DatatypeConverter
 
-@Path("service")
+@Path("public/gateway/service")
 class ServiceAccountResource {
 
 

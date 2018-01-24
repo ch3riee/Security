@@ -54,8 +54,8 @@ object App{
         context.securityHandler = csh
 
         csh.authenticator = CustomAuthenticator()
-        csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/login")
-        csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/login/error") //our endpoints
+        csh.setInitParameter(CustomAuthenticator.__FORM_LOGIN_PAGE, "/rest/public/gateway/session/login")
+        csh.setInitParameter(CustomAuthenticator.__FORM_ERROR_PAGE, "/rest/public/gateway/session/login/error") //our endpoints
         csh.loginService = HashLoginService()
         val idService = CustomIdentityService()
         csh.loginService.identityService = idService
@@ -78,7 +78,7 @@ object App{
         val jndiName2 = "jdbc/sessionStore"
         val myDataSource2 = Resource("java:comp/env/" + jndiName2, simpleDataSource2)
         server.setAttribute("sessionStore", myDataSource2)
-
+        //any future changes: ./gradlew shadowJar, docker-compose build, docker-compose up
         try{
             server.start()
             server.join()

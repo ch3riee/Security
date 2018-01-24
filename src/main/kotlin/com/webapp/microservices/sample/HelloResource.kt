@@ -7,7 +7,7 @@ import javax.ws.rs.core.Response
 import javax.ws.rs.*
 
 @RolesAllowed(value = *arrayOf("user", "guest"))
-@Path("hello")
+@Path("public/gateway/sample/hello")
 class HelloResource {
 
     @GET

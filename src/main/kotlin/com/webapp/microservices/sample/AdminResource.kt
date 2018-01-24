@@ -17,7 +17,7 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
 @RolesAllowed("admin")
-@Path("admin")
+@Path("public/gateway/sample/admin")
 class AdminResource {
 
    @GET

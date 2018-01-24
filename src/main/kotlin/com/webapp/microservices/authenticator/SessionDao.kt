@@ -28,7 +28,7 @@ import javax.ws.rs.core.HttpHeaders
 import javax.ws.rs.core.MediaType
 
 
-@Path("session")
+@Path("internal/gateway/session")
 class SessionDao{
 
     @GET
@@ -154,7 +154,7 @@ class SessionDao{
     @Path("print")
     @Suppress("UNCHECKED_CAST")
     //This method is purely for debugging purposes
-    fun getSessions(){
+    fun getSessions(): Response{
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/sessionStore") as DataSource)
         transaction {
             for (s in JettySessions.selectAll()) {
@@ -165,6 +165,8 @@ class SessionDao{
             }
 
         }
+        return Response.ok().type(MediaType.TEXT_PLAIN).entity("hello internal works").build()
+
     }
 
 }
