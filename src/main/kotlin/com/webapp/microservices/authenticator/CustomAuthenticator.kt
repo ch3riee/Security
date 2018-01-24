@@ -474,17 +474,19 @@ class CustomAuthenticator() : LoginAuthenticator() {
             if (isJSSO(uri)) {
                 val tempCode = request.getParameter("code")
                 //below grabs the cookie we set in login page for original request uri
-                //only for SSO
+                //only for SSO, we check down below with the rest if nuri or savedURI is correct saved url
                 val cookies = request.cookies
                 for(cookie: Cookie in cookies)
                 {
-                    if(cookie.name.equals("j_uri"))
+                    if(cookie.name.equals("j_uri") )
                     {
                         savedURI = cookie.value
                     }
+
                 }
                 checked = true
                 user = login(tempCode, "", request)
+
             }
             else if(isJLocal(uri)) {
                 val username = request.getParameter(__J_USERNAME)
@@ -503,9 +505,11 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 var form_auth = CustomAuthentication(authMethod, user)
                 synchronized(session) {
                     nuri = session!!.getAttribute(__J_URI) as String?
+                    //this section checks to make sure nuri and savedURI are correct
+                    //nuri is authenticator's and savedURI is created to handle the other cases
                      if(nuri == null || nuri!!.isEmpty() || nuri!!.contains("logout"))
                     {
-                        if(savedURI != null)
+                        if(savedURI != null && !(savedURI!!.contains("logout")))
                         {
                             nuri = savedURI
                         }
@@ -546,10 +550,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                     response.setDateHeader(HttpHeader.EXPIRES.asString(), 1)
                     dispatcher.forward(FormRequest(request), FormResponse(response))
                 } else {
-                   /* val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
-                        HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER*/
-                    //base_response.sendRedirect(redirectCode,
-                    //response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formErrorPage)))
                     res.sendRedirect(_formErrorPage)
                 }
                 return Authentication.SEND_FAILURE
@@ -636,8 +636,6 @@ class CustomAuthenticator() : LoginAuthenticator() {
                 LOG.debug("challenge {}->{}", session.id, _formLoginPage)
                 val redirectCode = if (base_request.httpVersion.version < HttpVersion.HTTP_1_1.version)
                     HttpServletResponse.SC_MOVED_TEMPORARILY else HttpServletResponse.SC_SEE_OTHER
-                //base_response.sendRedirect(redirectCode,
-                  //    response.encodeRedirectURL(URIUtil.addPaths(request.contextPath, _formLoginPage)))
                 //added below for saving original request, last changed code location
                 if(savedURI != null)
                 {

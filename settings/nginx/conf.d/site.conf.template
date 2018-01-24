@@ -46,7 +46,7 @@ server {
 
     location ~ /rest/public/(?<j_uri>.*)$ {
             if ($http_cookie !~ "JwtToken=") {
-                return 302 $scheme://$host:8080/rest/public/gateway/session/login?j_uri=/rest/$j_uri;
+                return 302 $scheme://$host:8080/rest/public/gateway/session/login?j_uri=/rest/public/$j_uri;
                }
             proxy_pass            $the_server ;
         }
