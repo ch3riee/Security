@@ -13,8 +13,11 @@ git clone https://github.com/ch3riee/Security.git .
 docker-compose up
 ```
 ### 3. Example Rest Endpoint 
-To check if working, go to http://127.0.0.1:8080/rest/hello </br>
-This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/login </br>
+To check if working, go to http://127.0.0.1:8080/rest/public/gateway/sample/hello </br>
+This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/public/gateway/session/login </br>
+## URL SCHEMA
+### 1. Brief Notes On Conforming To The URL Schema
+Please configure and implement your microservice urls by following this schema. All microservices internal or public should be prefixed by /rest/, followed by "public" or "internal", followed by microservice name (in our case "gateway"), and then followed by any modules. The rest of the URL is up to you. For example our login page lies as: http://127.0.0.1:8080/rest/public/gateway/session/login. For my examples please look at the reference.md file.
 ## DOCKER
 ### 1. Brief Notes On Making Changes To This Gateway's  Java Jar File </br>
 This security gateway and all of its features have been bundled together into a Java jar file that is mounted into a DockerFile, which is then included within the docker-compose.yml file under the container srvjavausers. The Java jar was built using the library shadowJar using the command:
