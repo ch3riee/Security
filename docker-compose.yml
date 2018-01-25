@@ -14,32 +14,32 @@ services:
     command: /bin/bash -c "cp -f /etc/nginx/conf.d/site.conf.template /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
   srvjavausers:
-    build:
+     build:
       context: .
       dockerfile: DockerFile
-    ports:
+     ports:
         - "8081"
-    depends_on:
-      - db-session
-      - db-account
-    volumes:
-      - ./:/app
-      - ./src/main/resources/pki/Public.key:/var/lib/pki-public
-      - ./build/libs/rest-1.0-SNAPSHOT-all.jar:/rest-1.0-SNAPSHOT-all.jar
+     depends_on:
+       - db-session
+       - db-account
+     volumes:
+       - ./:/app
+       - ./src/main/resources/pki/Public.key:/var/lib/pki-public
+       - ./build/libs/rest-1.0-SNAPSHOT-all.jar:/rest-1.0-SNAPSHOT-all.jar
 
-  #srvjavausers:
-   # restart: always
-    #image: gradle:alpine
-    #ports:
-     # - "8081"
-   # depends_on:
-    #  - db-session
-     # - db-account
-   # volumes:
-    #  - ./:/app
-    #  - ./src/main/resources/pki/Public.key:/var/lib/pki-public
-   # working_dir: /app
-   # entrypoint: gradle run
+#  srvjavausers:
+#    restart: always
+#    image: gradle:alpine
+#    ports:
+#      - "8081"
+#    depends_on:
+#      - db-session
+#      - db-account
+#    volumes:
+#      - ./:/app
+#      - ./src/main/resources/pki/Public.key:/var/lib/pki-public
+#    working_dir: /app
+#    entrypoint: gradle run
 
   srv-sample:
       restart: always
