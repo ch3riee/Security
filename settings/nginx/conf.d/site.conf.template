@@ -1,13 +1,16 @@
+upstream backend {
+    server   srv-sample:8000;
+}
 
 map $uri $the_server {
-    default   http://srvjavausers:8081;
-    ~^/rest/public/sample/.*   http://srv-sample:8000;
+    default      http://srvjavausers:8081;
+    ~^/rest/public/gateway/.*  http://srvjavausers:8081 ;
+    ~^/rest/public/sample/.*   http://backend ;
 }
 
 map $uri $internal_server{
     ~^/rest/internal/gateway/.*   http://srvjavausers:8081;
 }
-
 
 server {
 
@@ -43,13 +46,13 @@ server {
          proxy_pass              http://srvjavausers:8081 ;
     }
 
-
     location ~ /rest/public/(?<j_uri>.*)$ {
             if ($http_cookie !~ "JwtToken=") {
-                return 302 $scheme://$host:8080/rest/public/gateway/session/login?j_uri=/rest/public/$j_uri;
+                return 301 $scheme://$host:8080/rest/public/gateway/session/login?j_uri=/rest/public/$j_uri;
                }
             proxy_pass            $the_server ;
         }
+
 
     ############################################################
 
