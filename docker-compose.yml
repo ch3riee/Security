@@ -10,7 +10,7 @@ services:
       - "8080:80"
     depends_on:
       - srvjavausers
-      - srv-sample
+      - srvsample
     command: /bin/bash -c "cp -f /etc/nginx/conf.d/site.conf.template /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
   srvjavausers:
@@ -41,7 +41,7 @@ services:
 #    working_dir: /app
 #    entrypoint: gradle run
 
-  srv-sample:
+  srvsample:
       restart: always
       image: gradle:alpine
       ports:

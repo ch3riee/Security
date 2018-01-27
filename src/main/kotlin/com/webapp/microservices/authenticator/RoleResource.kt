@@ -22,14 +22,25 @@ class RoleResource{
     fun createRoles(@QueryParam("name") roleName: String): Response {
        //add permission names later
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
-        transaction {
-            Roles.insert{
-                it[name] = roleName
-            } //get Roles.id
-        }
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
-        node.put("Create Role Count", 1)
+        var error:String? = "No Operations Executed"
+        var count = 0
+        transaction {
+            try {
+                Roles.insert {
+                    it[name] = roleName
+                }
+                count += 1
+            }catch( e: org.postgresql.util.PSQLException){
+                error = e.message
+            }
+        }
+        if(count == 0)
+        {
+            node.put("Error", error)
+        }
+        node.put("Create Role Count", count)
         return Response.ok().entity(node).build()
 
     }
@@ -40,6 +51,7 @@ class RoleResource{
     fun deleteRoles(@QueryParam("rname") roleName: String, @QueryParam("name") name: String?,
                     @QueryParam("type") type: String?): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        var ret = 0
         transaction {
             if(name != null){
                 var rid = 0
@@ -48,6 +60,7 @@ class RoleResource{
                 }.forEach{
                     rid = it[Roles.id]
                 }
+
                 if(type == "service"){
                   var sid = 0
                   Services.select{
@@ -55,7 +68,7 @@ class RoleResource{
                   }.forEach{
                       sid = it[Services.id]
                   }
-                  ServiceRole.deleteWhere{
+                  ret = ServiceRole.deleteWhere{
                       ServiceRole.roleid.eq(rid) and ServiceRole.sid.eq(sid)
                   }
 
@@ -68,20 +81,24 @@ class RoleResource{
                     }.forEach{
                         uid = it[Users.id]
                     }
-                    UserRole.deleteWhere{
+                    ret = UserRole.deleteWhere{
                         UserRole.roleid.eq(rid) and UserRole.uid.eq(uid)
                     }
                 }
             }
             else{
-                Roles.deleteWhere{
+                ret = Roles.deleteWhere{
                     Roles.name.eq(roleName)
                 }
             }
         }
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
-        node.put("Delete Role Count", 1)
+        if(ret == 0)
+        {
+            node.put("Error", "No Operations Executed")
+        }
+        node.put("Delete Role Count", ret)
         return Response.ok().entity(node).build()
     }
 
@@ -91,6 +108,10 @@ class RoleResource{
     fun assignRoles(@QueryParam("rname") roleName: String,
                     @QueryParam("name") name: String, @QueryParam("type") type: String ): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        val mapper = ObjectMapper()
+        val node = mapper.createObjectNode()
+        var count = 0
+        var error: String? = "No operations executed"
         transaction{
             var rid = 0
             var id = 0
@@ -100,35 +121,49 @@ class RoleResource{
                 rid = it[Roles.id]
             }
 
-            if(type == "service")
-            {
-                Services.select{
-                    Services.sname.eq(name)
-                }.forEach{
-                    id = it[Services.id]
-                    ServiceRole.insert{
-                        it[roleid] = rid
-                        it[sid] = id
-                    }
-                }
+               if(type == "service")
+               {
+                       Services.select {
+                           Services.sname.eq(name)
+                       }.forEach {
+                           id = it[Services.id]
+                           try{
+                               ServiceRole.insert {
+                                   it[roleid] = rid
+                                   it[sid] = id
+                               }
+                               count += 1
+                           }catch(e: org.postgresql.util.PSQLException){
+                               error = e.message
+                               //count = 0
+                           }
 
-            }
-            else{
-                Users.select{
-                    Users.username.eq(name)
-                }.forEach{
-                    id = it[Users.id]
-                    UserRole.insert{
-                        it[roleid] = rid
-                        it[uid] = id
-                    }
-                }
+                       }
+                   }
+               else{
+                       Users.select {
+                           Users.username.eq(name)
+                       }.forEach {
+                           id = it[Users.id]
+                           try{
+                               UserRole.insert {
+                                   it[roleid] = rid
+                                   it[uid] = id
+                               }
+                               count += 1
+                           }catch(e: org.postgresql.util.PSQLException){
+                               error = e.message
+                               //count = 0
+                           }
 
-            }
+                       }
+               }
         }
-        val mapper = ObjectMapper()
-        val node = mapper.createObjectNode()
-        node.put("Assign Role Count", 1)
+
+        if(count == 0){
+            node.put("Error", error)
+        }
+        node.put("Assign Role Count", count)
         return Response.ok().entity(node).build()
     }
 
@@ -141,8 +176,11 @@ class RoleResource{
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        val node = mapper.createObjectNode()
         var count = 0
+        var error:String? = "No Operations Executed"
         transaction {
+
             var rid = 0
             Roles.select{
                 Roles.name.eq(rname)
@@ -156,20 +194,27 @@ class RoleResource{
 
             var id = 0
             list.forEach({ e: String ->
-                    Permissions.select{
-                        Permissions.operation.eq(e)
-                    }.forEach{
-                        id = it[Permissions.id]
+                Permissions.select{
+                    Permissions.operation.eq(e)
+                }.forEach{
+                    id = it[Permissions.id]
+                    try {
                         RolePerm.insert {
                             it[roleid] = rid
                             it[pid] = id
                         }
                         count += 1
+                    }catch(e: org.postgresql.util.PSQLException){
+                        error = e.message
+                        //count = 0
                     }
-            })
 
+                }
+            })
         }
-        val node = mapper.createObjectNode()
+        if(count == 0){
+            node.put("Error", error)
+        }
         node.put("Update Role Count", count)
         return Response.ok().entity(node).build()
     }

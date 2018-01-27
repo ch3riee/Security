@@ -29,6 +29,7 @@ class Login{
         if(saved != null && (request.getSession(false) == null))
         {
             //for the situation where jetty has no session prior to hit login page but nginx has already redirected
+            //testid in <meta> with the hash (md5)
             return Response.status(200).entity("<html>\n" +
                     "  <head>\n" +
                     "  </head>\n" +

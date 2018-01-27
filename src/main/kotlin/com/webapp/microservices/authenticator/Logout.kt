@@ -14,6 +14,7 @@ class Logout{
     @GET
     fun logout(@Context request: HttpServletRequest, @CookieParam("JSESSIONID") cookie: Cookie?): Response {
 
+        //check that there is the login hash
         if(cookie != null)
         {
             request.getSession(false).invalidate()
