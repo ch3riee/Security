@@ -123,7 +123,7 @@ location ~ /rest/internal/* {
         proxy_pass            $internal_services ;
     }
 ```
-guards against usage without the proper Authorization bearer token. If this Authorization token does not exist in the user's request header, NGINX return a 403 forbidden. For more information on this token, look at the "Use Service Account Jwt Token" section below </br>
+guards against usage without the proper Authorization bearer token. If this Authorization token does not exist in the user's request header, NGINX return a 403 forbidden. For more information on this token, look at the "Use Service Account Jwt Token" section below within the "Shared Session Store" section. </br>
 1) First, define your microservice servers under an upstream block within the Nginx configuration file (site.conf.template). Internal and public servers for your microservice can be defined in the same upstream block. However they must be placed in the proper internal or public map block (step 2).
 ```
 upstream microservice-sample {
@@ -238,6 +238,12 @@ For detailed API reference please look at Reference.md file located within this 
 If you would like more details on how the Jetty Server (Authentication Server/ Admin API Server) handles requests please look at this following diagram. This diagram shows the callstack for handling an Http Request. </br>
 ![Alt text](diagram.png?raw=true "Request Class Path Diagram")
 </br>
+## TESTING
+There is already a test suite located within MyTests.kt that is provided. It will test all the apis of this gateway, as well as login and logout. It is important to note that these tests must be run in alphabetical order due to dependencies. Thus please do not try to test subsets of the test suite. Instead run:
+```
+./gradlew cleanTest test
+```
+to run all the tests in the correct order.
 ## ADDITIONAL COMMENTS
 1. If a call to the APIs returns an NGINX generated 404, this means that NGINX is missing this static content, or there is no existing configuration location for this URI. </br>
 2. If a call to the APIs returns a JETTY generated 404, this means that there is a missing API implementation. </br>
