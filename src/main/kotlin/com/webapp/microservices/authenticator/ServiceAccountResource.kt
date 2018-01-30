@@ -32,22 +32,17 @@ class ServiceAccountResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("create")
     @RolesAllowed("admin")
-    fun createService(@QueryParam("name") name: String, body: String): Response {
+    fun createService(@QueryParam("sname") name: String, body: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()
         val obj = mapper.readTree(body)
         val key = obj.get("publickey").asText()
-        var exists = false
         var jwt: String? = null
         val node = mapper.createObjectNode()
+        var count = 0
+         var id:Int = -1
+        var error:String? = "No Operations Executed"
         transaction {
-            val c = Services.select {
-                Services.sname.eq(name)
-            }.count()
-            if (c > 0) {
-                node.put("Create Service Count", "0, Service already exists")
-                return@transaction
-            }
             val rList = ArrayList<String>()
             val pList = HashSet<String>()
             rList.add("sessionOperator")
@@ -69,24 +64,41 @@ class ServiceAccountResource {
             }
 
             jwt = generateJWT(name, rList, ArrayList<String>(pList))
-            val id = Services.insert {
-                it[sname] = name
-                it[token] = jwt
-                it[pubKey] = key
-                it[secret] = getRandom()
-            } get Services.id
+           
+            try{
+                id = Services.insert {
+                    it[sname] = name
+                    it[token] = jwt
+                    it[pubKey] = key
+                    it[secret] = getRandom()
+                } get Services.id
+            }catch (e: org.postgresql.util.PSQLException)
+                {
+                   error = e.message
+                   return@transaction
+                }
 
             //create new ServiceRole entry
             roles.forEach {
                 val sessionId = it[Roles.id]
-                ServiceRole.insert {
-                    it[sid] = id
-                    it[roleid] = sessionId
+                try{
+                    ServiceRole.insert {
+                        it[sid] = id
+                        it[roleid] = sessionId
+                    }
+                    count += 1
+                } catch( e: org.postgresql.util.PSQLException)
+                {
+                   error = e.message
                 }
             }
-            node.put("Create Service Count", 1)
+        
         }
-
+        if(count == 0 || id == -1)
+        {
+          node.put("Error", error)
+        }
+        node.put("Create Service Count", count)
         return Response.ok().entity(node).build()
 
     }
@@ -152,7 +164,7 @@ class ServiceAccountResource {
     @GET
     @Path("getServiceToken")
     @Produces(MediaType.APPLICATION_JSON)
-    fun checkService(@QueryParam("tempSecret") temp: String?, @QueryParam("name") name: String): Response {
+    fun checkService(@QueryParam("tempSecret") temp: String?, @QueryParam("sname") name: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         var theString: String? = null
         var keypub: String? = null
@@ -160,7 +172,7 @@ class ServiceAccountResource {
         val mapper = ObjectMapper()
         val root = mapper.createObjectNode()
         transaction {
-            val c = Services.select {
+            Services.select {
                 Services.sname.eq(name)
             }.forEach {
                 theString = it[Services.secret]
@@ -188,22 +200,18 @@ class ServiceAccountResource {
     @GET
     @Path("delete")
     @Produces(MediaType.APPLICATION_JSON)
-    fun deleteService(@QueryParam("name") sName: String): Response {
+    fun deleteService(@QueryParam("sname") sName: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
         transaction {
-            val c = Services.select {
-                Services.sname.eq(sName)
-            }.count()
-            if (c == 0) {
-                node.put("Delete Service Count", "0, service name does not exist")
-                return@transaction
-            }
-            Services.deleteWhere {
+            val ret = Services.deleteWhere {
                 Services.sname.eq(sName)
             }
-            node.put("Delete Service Count", 1)
+            if(ret == 0){
+                node.put("Error", "No Operations Executed")
+            }
+            node.put("Delete Service Count", ret)
         }
 
         return Response.ok().entity(node).build()
@@ -213,37 +221,37 @@ class ServiceAccountResource {
     @Path("update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun updateService(@QueryParam("name") sName: String, body: String): Response {
+    fun updateService(@QueryParam("sname") sName: String, body: String): Response {
         //body holds the update password
         val mapper = ObjectMapper()
         val obj = mapper.readTree(body)
         val key = obj.get("publickey").asText()
+        println(key)
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val node = mapper.createObjectNode()
         transaction {
             //update public key for service account
-            val res = Services.select {
-                Services.sname.eq(sName)
+
+           val res= Services.update({Services.sname eq sName}) {
+                it[pubKey] = key
             }
-            if (res.count() == 0) {
-                node.put("Update Service Count", "0, Service does not exist")
+
+            if (res == 0) {
+                node.put("Error", "No Operations Executed")
+                node.put("Update Service Count", 0)
                 return@transaction
             }
 
-            res.forEach {
-                it[Services.pubKey] = key
-            }
-            node.put("Update User Count", 1)
+            node.put("Update Service Count", 1)
             //maybe add update roles in the future
         }
-
         return Response.ok().entity(node).build()
     }
 
     @GET
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
-    fun readServices(@QueryParam("name") sName: String?): Response {
+    fun readServices(@QueryParam("sname") sName: String?): Response {
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -259,7 +267,8 @@ class ServiceAccountResource {
                 }
                 if(res.count() == 0)
                 {
-                    node.put("Read Count", "0, No such service")
+                    node.put("Error", "No Operations Executed")
+                    node.put("Read Service Count", 0)
                     return@transaction
                 }
                 res.forEach {
@@ -308,6 +317,7 @@ class ServiceAccountResource {
         }
         return Response.ok().entity(node).build()
     }
+
 }
 
 

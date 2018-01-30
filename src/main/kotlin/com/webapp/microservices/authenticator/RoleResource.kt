@@ -19,7 +19,7 @@ class RoleResource{
     @GET
     @Path("create")
     @Produces(MediaType.APPLICATION_JSON)
-    fun createRoles(@QueryParam("name") roleName: String): Response {
+    fun createRoles(@QueryParam("rname") roleName: String): Response {
        //add permission names later
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()
@@ -171,7 +171,7 @@ class RoleResource{
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun updateRole(@QueryParam("name") rname: String, body: String): Response{
+    fun updateRole(@QueryParam("rname") rname: String, body: String): Response{
         val mapper = ObjectMapper()
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
@@ -218,12 +218,4 @@ class RoleResource{
         node.put("Update Role Count", count)
         return Response.ok().entity(node).build()
     }
-
-
-
-
-
-
-
-
 }

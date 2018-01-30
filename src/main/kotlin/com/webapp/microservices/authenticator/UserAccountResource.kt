@@ -29,24 +29,28 @@ class UserAccountResource{
         val pwd = obj.get("password").asText()
         //add roles later?
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        var count = 0
+        var error:String? = "No Operations Executed"
         val node = mapper.createObjectNode()
         transaction {
-           val c = Users.select{
-                Users.username.eq(userName)
-            }.count()
-            if(c > 0){
-                node.put("Create User Count", "0 , username already exists")
-                return@transaction
+            try{
+                Users.insert{
+                    it[username] = userName
+                    it[password] = pwd
+                }
+                count += 1
+                
+            } catch( e: org.postgresql.util.PSQLException){
+                 error = e.message
             }
-            Users.insert{
-                it[username] = userName
-                it[password] = pwd
-            }
-
-            node.put("Create User Count", 1)
+        
+        }
+        if(count == 0)
+        {
+           node.put("Error", error)
         }
 
-
+         node.put("Create User Count", count)
         return Response.ok().entity(node).build()
 
     }
@@ -54,26 +58,19 @@ class UserAccountResource{
     @GET
     @Path("delete")
     @Produces(MediaType.APPLICATION_JSON)
-    fun deleteUsers(@QueryParam("name") userName: String): Response {
+    fun deleteUsers(@QueryParam("uname") userName: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
         transaction {
-            val c = Users.select{
-                Users.username.eq(userName)
-            }.count()
-            if (c == 0)
-            {
-                node.put("Delete User Count", "0, username does not exist")
-                return@transaction
-            }
-            Users.deleteWhere{
+            val ret = Users.deleteWhere{
                 Users.username.eq(userName)
             }
-            node.put("Delete User Count", 1)
+            if(ret == 0){
+                node.put("Error", "No Operations Executed")
+            }
+            node.put("Delete User Count", ret)
         }
-
-
         return Response.ok().entity(node).build()
     }
 
@@ -81,7 +78,7 @@ class UserAccountResource{
     @Path("update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun updateUser(@QueryParam("name") userName: String, body: String): Response{
+    fun updateUser(@QueryParam("uname") userName: String, body: String): Response{
         //body holds the update password
         val mapper = ObjectMapper()
         val obj = mapper.readTree(body)
@@ -90,20 +87,16 @@ class UserAccountResource{
         val node = mapper.createObjectNode()
         transaction {
             //update password
-           val res=  Users.select {
-               Users.username.eq(userName)
+           val res=  Users.update({Users.username eq userName}){
+               it[password] = pwd
            }
-           if (res.count() == 0)
+           if (res == 0)
            {
-               node.put("Update User Count", "0, username does not exist")
+               node.put("Error", "No Operations Executed")
+               node.put("Update User Count", 0)
                return@transaction
            }
-
-            res.forEach{
-                it[Users.password] = pwd
-            }
             node.put("Update User Count", 1)
-           //maybe add update roles in the future
         }
 
         return Response.ok().entity(node).build()
@@ -112,7 +105,7 @@ class UserAccountResource{
     @GET
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
-    fun readUsers(@QueryParam("name") userName: String? ): Response{
+    fun readUsers(@QueryParam("uname") userName: String? ): Response{
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -129,7 +122,8 @@ class UserAccountResource{
                 }
                 if(res.count() == 0)
                 {
-                    node.put("Read User Count", "0, no such User exists")
+                    node.put("Error", "No Operations Executed")
+                    node.put("Read User Count", 0)
                     return@transaction
                 }
                 res.forEach{
@@ -177,8 +171,5 @@ class UserAccountResource{
         }
         return Response.ok().entity(node).build()
     }
-
-
-
 
 }

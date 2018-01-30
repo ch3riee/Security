@@ -150,10 +150,12 @@ class SessionDao{
 
     }
 
-    @GET
+
+    //This method is purely for debugging purposes, prints out valid node ids
+
+    /*@GET
     @Path("print")
     @Suppress("UNCHECKED_CAST")
-    //This method is purely for debugging purposes
     fun getSessions(): Response{
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/sessionStore") as DataSource)
         transaction {
@@ -167,6 +169,6 @@ class SessionDao{
         }
         return Response.ok().type(MediaType.TEXT_PLAIN).entity("hello internal works").build()
 
-    }
+    }*/
 
 }

@@ -10,6 +10,8 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import sun.security.rsa.RSAPrivateCrtKeyImpl
+import java.math.BigInteger
+import java.security.MessageDigest
 import java.util.*
 import javax.naming.InitialContext
 import javax.servlet.http.HttpServletRequest
@@ -26,12 +28,15 @@ class Login{
         val saved = request.getQueryString()
         //The cookie is only for the SSO caveat to make sure we have the correct original request url
         val c = Cookie("j_uri", request.getParameter("j_uri"), "/", request.serverName)
+
         if(saved != null && (request.getSession(false) == null))
         {
             //for the situation where jetty has no session prior to hit login page but nginx has already redirected
             //testid in <meta> with the hash (md5)
+
             return Response.status(200).entity("<html>\n" +
                     "  <head>\n" +
+                    "     <meta name=\"testid\" content=\"" + "5629ba47d624b2d2688c0a0340b29344" + "\">" +
                     "  </head>\n" +
                     "  <body>\n" +
                     "    <p>\n" +
@@ -68,6 +73,7 @@ class Login{
         //normal situation
         return Response.status(200).entity("<html>\n" +
                 "  <head>\n" +
+                "     <meta name=\"testid\" content=\"" + "5629ba47d624b2d2688c0a0340b29344" + "\">" +
                 "  </head>\n" +
                 "  <body>\n" +
                 "    <p>\n" +
@@ -104,7 +110,6 @@ class Login{
     @Path("local")
     @Produces("text/html")
     fun loginLocal(@Context request: HttpServletRequest): Response{
-        println("Inside loginlocal: " + request.requestURI)
         return Response.status(200).entity("<html>\n" +
                 " <head>\n" +
                 "   <title> Login Form </title>" +
