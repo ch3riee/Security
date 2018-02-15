@@ -2,15 +2,15 @@ CREATE TABLE IF NOT EXISTS Users (id serial PRIMARY KEY, username VARCHAR(50) NO
 
 CREATE TABLE IF NOT EXISTS Roles (id serial PRIMARY KEY, rolename VARCHAR(50) NOT NULL UNIQUE);
 
-CREATE TABLE IF NOT EXISTS UserRole (uid INT references Users(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff UNIQUE(uid, roleid));
+CREATE TABLE IF NOT EXISTS UserRole (id serial PRIMARY KEY, uid INT references Users(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff UNIQUE(uid, roleid));
 
 CREATE TABLE IF NOT EXISTS Permissions (id serial PRIMARY KEY, operation VARCHAR(50) NOT NULL UNIQUE);
 
-CREATE TABLE IF NOT EXISTS RolePerm (pid INT references Permissions(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff2 UNIQUE(pid, roleid));
+CREATE TABLE IF NOT EXISTS RolePerm (id serial PRIMARY KEY, pid INT references Permissions(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff2 UNIQUE(pid, roleid));
 
 CREATE TABLE IF NOT EXISTS Services (id serial PRIMARY KEY, servicename VARCHAR(50) NOT NULL UNIQUE, servicetoken text, publickey text, tempsecret VARCHAR(20));
 
-CREATE TABLE IF NOT EXISTS ServiceRole (sid INT references Services(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff3 UNIQUE(sid, roleid) );
+CREATE TABLE IF NOT EXISTS ServiceRole (id serial PRIMARY KEY, sid INT references Services(id) ON DELETE CASCADE, roleid INT references Roles(id) ON DELETE CASCADE, Constraint must_be_diff3 UNIQUE(sid, roleid) );
 
 
 -- User Roles

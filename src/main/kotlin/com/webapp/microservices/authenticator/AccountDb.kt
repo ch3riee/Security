@@ -1,5 +1,6 @@
 package com.webapp.microservices.authenticator
 
+
 import org.jetbrains.exposed.sql.*
 
 
@@ -17,6 +18,7 @@ object Roles : Table() {
 }
 
 object UserRole : Table() {
+    val id = Services.integer("id").autoIncrement().primaryKey()
     val uid = (integer("uid") references Users.id)
     val roleid = (integer("roleid") references Roles.id)
 }
@@ -27,6 +29,7 @@ object Permissions: Table(){
 }
 
 object RolePerm: Table(){
+    val id = Services.integer("id").autoIncrement().primaryKey()
     val pid = (integer("pid") references Permissions.id)
     val roleid = (integer("roleid") references Roles.id)
 }
@@ -40,6 +43,7 @@ object Services: Table(){
 }
 
 object ServiceRole: Table(){
+    val id = Services.integer("id").autoIncrement().primaryKey()
     val sid = (integer("sid") references Services.id)
     val roleid = (integer("roleid") references Roles.id)
 }

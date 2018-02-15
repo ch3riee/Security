@@ -55,7 +55,41 @@ class RoleResource{
         transaction {
             if(name != null){
                 var rid = 0
-                Roles.select{
+
+
+                for (rows in UserRole.selectAll()){
+                    println("${rows[UserRole.uid]} and ${rows[UserRole.roleid]}")
+                }
+
+
+                println("hello in here")
+                val idList = java.util.ArrayList<Int>()
+
+
+              /* val p= Roles.innerJoin(UserRole, {Roles.id}, {UserRole.roleid})
+                        .innerJoin(Users, {UserRole.uid}, {Users.id})
+                        .forEach{
+
+                        }*/
+              //  UserRole.deleteWhere{p}
+                val results =(Roles innerJoin UserRole innerJoin Users).select{(Roles.id.eq(UserRole.roleid)) and (Users.id.eq(UserRole.uid))}.map{ it[UserRole.id] }
+
+                UserRole.deleteWhere{UserRole.id.inList(results)}
+
+                for (rows in UserRole.selectAll()){
+                    println("${rows[UserRole.uid]} and ${rows[UserRole.roleid]}")
+                }
+
+
+                            //println("${it[Roles.id]} and ${it[UserRole.uid]} and ${it[UserRole.roleid]} and ${it[Users.id]}")}
+               /* (Services innerJoin ServiceRole innerJoin Roles).select{(Roles.id.eq(ServiceRole.roleid)) and (Services.id.eq(ServiceRole.sid))}
+                        .forEach{
+                            println(it)
+                           // println("${it[Roles.id]} and ${it[ServiceRole.sid]} and ${it[ServiceRole.roleid]} and ${it[Services.id]}")
+                           // ServiceRole.deleteWhere{}
+                        }*/
+
+               /* Roles.select{
                     Roles.name.eq(roleName)
                 }.forEach{
                     rid = it[Roles.id]
@@ -89,7 +123,7 @@ class RoleResource{
             else{
                 ret = Roles.deleteWhere{
                     Roles.name.eq(roleName)
-                }
+                }*/
             }
         }
         val mapper = ObjectMapper()
