@@ -16,13 +16,14 @@ import javax.ws.rs.core.MediaType
 @RolesAllowed("admin")
 class RoleResource{
 
-    @GET
-    @Path("create")
+    @POST
     @Produces(MediaType.APPLICATION_JSON)
-    fun createRoles(@QueryParam("rname") roleName: String): Response {
+    fun createRoles(body: String): Response {
        //add permission names later
-        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val mapper = ObjectMapper()
+        val obj = mapper.readTree(body)
+        val roleName = obj.get("rname").asText()
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val node = mapper.createObjectNode()
         var error:String? = "No Operations Executed"
         var count = 0
@@ -45,85 +46,30 @@ class RoleResource{
 
     }
 
-    @GET
-    @Path("delete")
+    @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     fun deleteRoles(@QueryParam("rname") roleName: String, @QueryParam("name") name: String?,
                     @QueryParam("type") type: String?): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         var ret = 0
         transaction {
-            if(name != null){
-                var rid = 0
+            if (name != null) {
+                if (type == "service") {
+                    val results = (Roles innerJoin ServiceRole innerJoin Services)
+                            .select { (Roles.id.eq(ServiceRole.roleid)) and (Services.id.eq(ServiceRole.sid) and (Services.sname.eq(name)) and (Roles.name.eq(roleName))) }
+                            .map { it[ServiceRole.id] }
+                    ret = ServiceRole.deleteWhere { ServiceRole.id.inList(results) }
 
-
-                for (rows in UserRole.selectAll()){
-                    println("${rows[UserRole.uid]} and ${rows[UserRole.roleid]}")
+                } else {
+                    val results = (Roles innerJoin UserRole innerJoin Users).select { (Roles.id.eq(UserRole.roleid)) and (Users.id.eq(UserRole.uid)) and (Users.username.eq(name)) and (Roles.name.eq(roleName)) }
+                            .map { it[UserRole.id] }
+                    ret = UserRole.deleteWhere { UserRole.id.inList(results) }
                 }
-
-
-                println("hello in here")
-                val idList = java.util.ArrayList<Int>()
-
-
-              /* val p= Roles.innerJoin(UserRole, {Roles.id}, {UserRole.roleid})
-                        .innerJoin(Users, {UserRole.uid}, {Users.id})
-                        .forEach{
-
-                        }*/
-              //  UserRole.deleteWhere{p}
-                val results =(Roles innerJoin UserRole innerJoin Users).select{(Roles.id.eq(UserRole.roleid)) and (Users.id.eq(UserRole.uid))}.map{ it[UserRole.id] }
-
-                UserRole.deleteWhere{UserRole.id.inList(results)}
-
-                for (rows in UserRole.selectAll()){
-                    println("${rows[UserRole.uid]} and ${rows[UserRole.roleid]}")
-                }
-
-
-                            //println("${it[Roles.id]} and ${it[UserRole.uid]} and ${it[UserRole.roleid]} and ${it[Users.id]}")}
-               /* (Services innerJoin ServiceRole innerJoin Roles).select{(Roles.id.eq(ServiceRole.roleid)) and (Services.id.eq(ServiceRole.sid))}
-                        .forEach{
-                            println(it)
-                           // println("${it[Roles.id]} and ${it[ServiceRole.sid]} and ${it[ServiceRole.roleid]} and ${it[Services.id]}")
-                           // ServiceRole.deleteWhere{}
-                        }*/
-
-               /* Roles.select{
+            } else {
+                ret = Roles.deleteWhere {
                     Roles.name.eq(roleName)
-                }.forEach{
-                    rid = it[Roles.id]
                 }
 
-                if(type == "service"){
-                  var sid = 0
-                  Services.select{
-                      Services.sname.eq(name)
-                  }.forEach{
-                      sid = it[Services.id]
-                  }
-                  ret = ServiceRole.deleteWhere{
-                      ServiceRole.roleid.eq(rid) and ServiceRole.sid.eq(sid)
-                  }
-
-                }
-                else{
-                    //type User Account
-                    var uid = 0
-                    Users.select{
-                        Users.username.eq(name)
-                    }.forEach{
-                        uid = it[Users.id]
-                    }
-                    ret = UserRole.deleteWhere{
-                        UserRole.roleid.eq(rid) and UserRole.uid.eq(uid)
-                    }
-                }
-            }
-            else{
-                ret = Roles.deleteWhere{
-                    Roles.name.eq(roleName)
-                }*/
             }
         }
         val mapper = ObjectMapper()
@@ -136,6 +82,7 @@ class RoleResource{
         return Response.ok().entity(node).build()
     }
 
+
     @GET
     @Path("assign")
     @Produces(MediaType.APPLICATION_JSON)
@@ -147,7 +94,7 @@ class RoleResource{
         var count = 0
         var error: String? = "No operations executed"
         transaction{
-            var rid = 0
+           var rid = 0
             var id = 0
             Roles.select{
                 Roles.name.eq(roleName)
@@ -201,11 +148,10 @@ class RoleResource{
         return Response.ok().entity(node).build()
     }
 
-    @Path("update")
-    @POST
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun updateRole(@QueryParam("rname") rname: String, body: String): Response{
+    fun updateRole(@QueryParam("name") rname: String, body: String): Response{
         val mapper = ObjectMapper()
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
@@ -214,6 +160,7 @@ class RoleResource{
         var count = 0
         var error:String? = "No Operations Executed"
         transaction {
+            //here we are updating roles with new perms. First we delete existing roleperm associations
 
             var rid = 0
             Roles.select{
@@ -252,4 +199,27 @@ class RoleResource{
         node.put("Update Role Count", count)
         return Response.ok().entity(node).build()
     }
-}
+
+    @GET
+    @Path("print")
+    @Suppress("UNCHECKED_CAST")
+    //This method is purely for debugging purposes
+    fun getSessions(): Response{
+        Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        transaction {
+            for (s in Roles.selectAll()) {
+                println("${s[Roles.id]}")
+                println("${s[Roles.name]}")
+            }
+
+        }
+        return Response.ok().type(MediaType.TEXT_PLAIN).entity("hello internal works").build()
+
+    }
+
+
+
+
+
+
+
