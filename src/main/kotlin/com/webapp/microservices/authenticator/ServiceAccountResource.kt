@@ -30,7 +30,6 @@ class ServiceAccountResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("create")
     @RolesAllowed("admin")
     fun createService(@QueryParam("sname") name: String, body: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -40,31 +39,17 @@ class ServiceAccountResource {
         var jwt: String? = null
         val node = mapper.createObjectNode()
         var count = 0
-         var id:Int = -1
+        var id:Int = -1
         var error:String? = "No Operations Executed"
         transaction {
-            val rList = ArrayList<String>()
-            val pList = HashSet<String>()
-            rList.add("sessionOperator")
-            //does not exist yet must create an entry
-            val roles = Roles.select {
-                Roles.name.inList(rList)
-            }
-
-            roles.forEach {
-                RolePerm.select {
-                    RolePerm.roleid.eq(it[Roles.id])
-                }.forEach {
-                    Permissions.select {
-                        Permissions.id.eq(it[RolePerm.pid])
-                    }.forEach {
-                        pList.add(it[Permissions.operation])
-                    }
-                }
-            }
-
-            jwt = generateJWT(name, rList, ArrayList<String>(pList))
-           
+            //by default services only have sessionOperator role when created.
+            //can assign more roles using the role resource
+            val results = (Roles innerJoin RolePerm innerJoin Permissions)
+                    .select { (Roles.id.eq(RolePerm.roleid)) and (Roles.name.eq("sessionOperator")) and (Permissions.id.eq(RolePerm.pid)) }
+            jwt = generateJWT(name, results.map{ it[Roles.name]} as ArrayList<String>,
+                    results.map{ it[Permissions.operation]} as ArrayList<String> )
+            val row = results.elementAt(0)
+            val rid = row[Roles.id]
             try{
                 id = Services.insert {
                     it[sname] = name
@@ -73,35 +58,34 @@ class ServiceAccountResource {
                     it[secret] = getRandom()
                 } get Services.id
             }catch (e: org.postgresql.util.PSQLException)
-                {
-                   error = e.message
-                   return@transaction
-                }
+            {
+                error = e.message
+                return@transaction
+            }
 
             //create new ServiceRole entry
-            roles.forEach {
-                val sessionId = it[Roles.id]
                 try{
                     ServiceRole.insert {
                         it[sid] = id
-                        it[roleid] = sessionId
+                        it[roleid] = rid
                     }
                     count += 1
                 } catch( e: org.postgresql.util.PSQLException)
                 {
-                   error = e.message
+                    error = e.message
                 }
-            }
-        
+
+
         }
         if(count == 0 || id == -1)
         {
-          node.put("Error", error)
+            node.put("Error", error)
         }
         node.put("Create Service Count", count)
         return Response.ok().entity(node).build()
 
     }
+
 
     //can change this later, random string generator. This results in a 16 character string
     private fun getRandom(): String {
@@ -197,8 +181,8 @@ class ServiceAccountResource {
         return Response.ok().entity(root).build()
     }
 
-    @GET
-    @Path("delete")
+
+    @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     fun deleteService(@QueryParam("sname") sName: String): Response {
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
@@ -217,8 +201,7 @@ class ServiceAccountResource {
         return Response.ok().entity(node).build()
     }
 
-    @POST
-    @Path("update")
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     fun updateService(@QueryParam("sname") sName: String, body: String): Response {
@@ -226,13 +209,10 @@ class ServiceAccountResource {
         val mapper = ObjectMapper()
         val obj = mapper.readTree(body)
         val key = obj.get("publickey").asText()
-        println(key)
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         val node = mapper.createObjectNode()
         transaction {
-            //update public key for service account
-
-           val res= Services.update({Services.sname eq sName}) {
+            val res= Services.update({Services.sname eq sName}) {
                 it[pubKey] = key
             }
 
@@ -249,19 +229,13 @@ class ServiceAccountResource {
     }
 
     @GET
-    @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
-    fun readServices(@QueryParam("sname") sName: String?): Response {
+    fun readServices(@QueryParam("name") sName: String?): Response {
         val mapper = ObjectMapper()
         val node = mapper.createObjectNode()
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
         transaction {
             if (sName != null) {
-                val objNode = mapper.createObjectNode()
-                var uid = 0
-                val rList = ArrayList<Int>()
-                val roles = ArrayList<String>()
-                //read this one service
                 val res = Services.select {
                     Services.sname.eq(sName)
                 }
@@ -271,55 +245,32 @@ class ServiceAccountResource {
                     node.put("Read Service Count", 0)
                     return@transaction
                 }
-                res.forEach {
-                    //grab service info + role info
-                    uid = it[Services.id]
-                    node.set(sName, objNode)
-                }
-
-                ServiceRole.select {
-                    ServiceRole.sid.eq(uid)
-                }.forEach {
-                    rList.add(it[ServiceRole.roleid])
-                }
-                rList.forEach({ e: Int ->
-                    Roles.select {
-                        Roles.id.eq(e)
-                    }.forEach {
-                        roles.add(it[Roles.name])
-                    }
-                })
-                val roleNode: ArrayNode = mapper.valueToTree(roles)
-                objNode.set("roles", roleNode)
+                val objNode = mapper.createObjectNode()
+                val results = (Roles innerJoin ServiceRole innerJoin Services)
+                        .select { (Services.sname.eq(sName)) and (Services.id.eq(ServiceRole.sid)  and (Roles.id.eq(ServiceRole.roleid))) }
+                        .map { it[Roles.name] }
+                val roleNode: ArrayNode = mapper.valueToTree(results)
+                node.set(sName, objNode.set("roles", roleNode))
+                node.put("Read Service Count", 1)
             } else {
                 //print all of them?
+                var count = 0
                 for (service in Services.selectAll()) {
-                    val rList = ArrayList<Int>()
-                    val roles = ArrayList<String>()
-                    ServiceRole.select {
-                        ServiceRole.sid.eq(service[Services.id])
-                    }.forEach {
-                        rList.add(it[ServiceRole.roleid])
-                    }
-                    rList.forEach({ e: Int ->
-                        Roles.select {
-                            Roles.id.eq(e)
-                        }.forEach {
-                            roles.add(it[Roles.name])
-                        }
-                    })
-                    val roleNode: ArrayNode = mapper.valueToTree(roles)
                     val objNode: ObjectNode = mapper.createObjectNode()
+                    val results = (Roles innerJoin ServiceRole innerJoin Services)
+                            .select { (Services.sname.eq(service[Services.sname])) and (Services.id.eq(ServiceRole.sid) and (Roles.id.eq(ServiceRole.roleid))) }
+                            .map { it[Roles.name] }
+                    val roleNode: ArrayNode = mapper.valueToTree(results)
                     node.set(service[Services.sname], objNode.set("roles", roleNode))
-
+                    count += 1
                 }
+                node.put("Read Service Count", count)
             }
         }
+
         return Response.ok().entity(node).build()
     }
-
 }
-
 
 
 
