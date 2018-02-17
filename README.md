@@ -149,8 +149,8 @@ There are two map blocks, one for any internal services that microservices can u
 ## Using Shared Session Store, Authentication, Authorization
 ### 1. Create Service Account (Requires Admin Role)
 If you have admin role access, please use this API in order to register your microservice. Otherwise please have an admin follow these steps. Must have a service account in order to use the shared session store. </br>
-Example  POST endpoint:
-http://127.0.0.1:8080/rest/public/gateway/service/create?sname=_____ </br>
+Example POST endpoint:
+http://127.0.0.1:8080/rest/public/gateway/service?sname=_____ </br>
 **The SNAME query parameter**: Pass in the name that you desire the Microservice to be called.<br/>
 **Request body**: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair) as part of a json object with the key name being "publickey". <br/>
 Your passed in Microservice's public key, will be used in order to encrypt a randomized tempSecret string. This is to make sure that any requests for the JWT Service Account token are only retrieved and used by the authorized Service Account. (One of the ways to get the service account token, admin role required) <br/>
