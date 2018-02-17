@@ -73,8 +73,8 @@ http://127.0.0.1:8080/rest/public/gateway/user?uname=_____ </br>
 This API allows someone with an Admin role, to create new roles (will save in DB), delete roles, update existing roles with new permissions, or assign roles to specific service accounts or user accounts(identified by name).
 #### 1. CREATE ROLE
 EXAMPLE POST endpoint:
-http://127.0.0.1:8080/rest/public/gateway/role?rname=_______ </br>
-**rname query param**: Name of the new role you want to add. 
+http://127.0.0.1:8080/rest/public/gateway/role </br>
+**Request Body **: Name of the new role you want to add. Please set value to "rname" key inside of Json Object, within the POST request body. 
 #### 2. DELETE ROLE
 EXAMPLE DELETE endpoint:
 http://127.0.0.1:8080/rest/public/gateway/role?rname=______&name=______&type=_______ </br>
