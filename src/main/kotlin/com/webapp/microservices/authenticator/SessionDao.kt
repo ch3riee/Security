@@ -32,7 +32,6 @@ import javax.ws.rs.core.MediaType
 class SessionDao{
 
     @GET
-    @Path("get")
     @Produces(MediaType.APPLICATION_JSON)
     @Suppress("UNCHECKED_CAST")
     fun get(@Context req: HttpServletRequest, @QueryParam("key") key :String, @QueryParam("id") id: String,
@@ -92,8 +91,6 @@ class SessionDao{
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON) //can't explicitly say in request header that want json
-    // only b/c login page is in html will say 406
-    @Path("set")
     @Suppress("UNCHECKED_CAST")
     fun set(@QueryParam("key") key :String, @QueryParam("id") id: String, data: String,
             @Context headers: HttpHeaders, @Context req: HttpServletRequest): Response {
