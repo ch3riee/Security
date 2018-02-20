@@ -1,5 +1,7 @@
 package com.webapp.microservices.authenticator
 
+
+
 import org.jetbrains.exposed.sql.transactions.transaction
 import javax.annotation.security.RolesAllowed
 import javax.naming.InitialContext
@@ -8,6 +10,8 @@ import javax.ws.rs.*
 import javax.ws.rs.core.Response
 import com.fasterxml.jackson.databind.type.TypeFactory
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.jetbrains.exposed.sql.*
 import javax.ws.rs.core.MediaType
 
@@ -151,7 +155,7 @@ class RoleResource{
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    fun updateRole(@QueryParam("name") rname: String, body: String): Response{
+    fun updateRole(@QueryParam("rname") rname: String, body: String): Response{
         val mapper = ObjectMapper()
         val list: ArrayList<String> = mapper.readValue(body, TypeFactory.defaultInstance()
                 .constructCollectionType(ArrayList::class.java, String::class.java))
@@ -161,6 +165,7 @@ class RoleResource{
         var error:String? = "No Operations Executed"
         transaction {
             //here we are updating roles with new perms. First we delete existing roleperm associations
+            //switched to batchinsert for less IO usage
 
             var rid = 0
             Roles.select{
@@ -173,25 +178,23 @@ class RoleResource{
                 RolePerm.roleid.eq(rid)
             }
 
-            var id = 0
-            list.forEach({ e: String ->
-                Permissions.select{
-                    Permissions.operation.eq(e)
-                }.forEach{
-                    id = it[Permissions.id]
-                    try {
-                        RolePerm.insert {
-                            it[roleid] = rid
-                            it[pid] = id
-                        }
-                        count += 1
-                    }catch(e: org.postgresql.util.PSQLException){
-                        error = e.message
-                        //count = 0
-                    }
+            val permList = Permissions.select{
+                Permissions.operation.inList(list)
+            }
 
-                }
-            })
+            val pairList = ArrayList<Pair<Int, Int>>()
+
+            permList.map{
+                val p = Pair(it[Permissions.id], rid)
+                pairList.add(p)
+            }
+
+           val ret =  RolePerm.batchInsert(pairList){ p ->
+                this[RolePerm.roleid] = p.second
+                this[RolePerm.pid] =  p.first
+            }
+            count = ret.size
+
         }
         if(count == 0){
             node.put("Error", error)
@@ -200,26 +203,25 @@ class RoleResource{
         return Response.ok().entity(node).build()
     }
 
-    @GET
+    /*@GET
     @Path("print")
     @Suppress("UNCHECKED_CAST")
-    //This method is purely for debugging purposes
+            //This method is purely for debugging purposes
     fun getSessions(): Response{
         Database.connect(InitialContext().lookup("java:comp/env/jdbc/userStore") as DataSource)
+        val mapper = ObjectMapper()
+        val node = mapper.createObjectNode()
         transaction {
-            for (s in Roles.selectAll()) {
-                println("${s[Roles.id]}")
-                println("${s[Roles.name]}")
+            for (role in Roles.selectAll()) {
+                val results = (Roles innerJoin RolePerm innerJoin Permissions)
+                        .select { (Roles.id.eq(RolePerm.roleid) and (Permissions.id.eq(RolePerm.pid)))}
+                        .map { println(it[Roles.name] + " :" + "permission: " + it[Permissions.operation]) }
+
             }
 
         }
-        return Response.ok().type(MediaType.TEXT_PLAIN).entity("hello internal works").build()
+        return Response.ok().type(MediaType.TEXT_PLAIN).entity("Testing").build()
 
-    }
-
-
-
-
-
-
+    }*/
+}
 
