@@ -193,12 +193,14 @@ Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/
 In order to get/set into a specific user's session, you must have a reference to the user's session id that is passed into the Session API. </br>
 *Prior to this step please follow step 4 and put [authorization: Bearer nfjfkjbfkjbefkjebf] in header. You must also have sessionOperator role allowed inside of this token in order to get and set attributes inside of the session.* </br>
 #### a) Get Attributes from Session
-http://127.0.0.1:8080/rest/internal/gateway/session/get?key=________&id=_________ </br>
+HTTP GET METHOD:
+http://127.0.0.1:8080/rest/internal/gateway/session/key=________&id=_________ </br>
 **key query param**: This param should be either the name of the attribute stored in the session, or the dotted notation json attribute path to the key you would like to retrieve. <br/>
 **id query param**: This param is where you pass in the desired Session ID that you would like to get an attribute from. </br>
 For example either myAttribute or myAttribute.a.b.c (the second will go into the attribute myAttribute and return the value of c). 
 #### b) Set Attributes in Session
-http://127.0.0.1:8080/rest/internal/gateway/session/set?key=________&id=__________ </br>
+HTTP POST METHOD:
+http://127.0.0.1:8080/rest/internal/gateway/session?key=________&id=__________ </br>
 **key query param**: Same as the get Attribute key query param. Except that it will create the json objects if they do not exist. <br/>
 **id query param**: This param is where you pass in the desired Session ID that you would like to set attribute into. </br>
 **EXAMPLE** : A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
