@@ -37,37 +37,37 @@ class MyTests {
     @Test
     fun testCreateService(){
         val str = "fake public key to be updated over"
-         val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service/create")
+        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
                 .queryString("sname", "testservice")
                 .body("{\"publickey\":\"" + str + "\"}") //will be updated to real public key later
-                 .asJson()
+                .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Create Service Count"))
-        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service/create")
+        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
                 .queryString("sname", "testservice")
                 .body("{\"publickey\":\"fakepublickey\"}")
                 .asJson()
-         val obj2:JSONObject = jsonResponse2.body.`object`
-          assertEquals(0, obj2.getInt("Create Service Count"))
+        val obj2:JSONObject = jsonResponse2.body.`object`
+        assertEquals(0, obj2.getInt("Create Service Count"))
     }
 
     @Test
     fun testCreateUser(){
-         val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user/create")
-           .header("JSESSIONID", jsessionId)
-           .header("JwtToken", jwtToken)
-           .header("Content-Type", "application/json")
-           .body("{\"username\":\"test@gmail.com\", \"password\":\"j\"}")
-           .asJson()
+        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user")
+                .header("JSESSIONID", jsessionId)
+                .header("JwtToken", jwtToken)
+                .header("Content-Type", "application/json")
+                .body("{\"username\":\"test@gmail.com\", \"password\":\"j\"}")
+                .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Create User Count"))
-        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user/create")
+        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -86,31 +86,31 @@ class MyTests {
         assertEquals("5629ba47d624b2d2688c0a0340b29344", p)
 
     }
-    
+
 
     @Test
     fun testRoleCreate() {
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/create")
+        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
-                .queryString("rname", "testrole")
+                .body("{\"rname\":\"testrole\"}")
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Create Role Count"))
-        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/create")
+        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
-                .queryString("rname", "testrole")
+                .body("{\"rname\":\"testrole\"}")
                 .asJson()
         val obj2:JSONObject = jsonResponse2.body.`object`
         //if not logged in will have expected array error
-       assertEquals(0, obj2.getInt("Create Role Count"))
-       assertNotNull(obj2.getString("Error"))
+        assertEquals(0, obj2.getInt("Create Role Count"))
+        assertNotNull(obj2.getString("Error"))
     }
 
-     @Test
+    @Test
     fun testRolePermUpdate(){
-         val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/role/update")
+        val jsonResponse = Unirest.put("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -121,10 +121,10 @@ class MyTests {
         //guest is ignored so not 3
         assertEquals(2, obj.getInt("Update Role Count"))
     }
-    
+
     @Test
     fun testRoleServiceAssign(){
-         val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
+        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -133,7 +133,7 @@ class MyTests {
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Assign Role Count"))
-         val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
+        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -145,10 +145,10 @@ class MyTests {
     }
 
 
-    
+
     @Test
     fun testRoleUserAssign(){
-       val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
+        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -157,7 +157,7 @@ class MyTests {
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Assign Role Count"))
-         val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
+        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -171,7 +171,7 @@ class MyTests {
 
     @Test
     fun testRoleServiceDelete() {
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -180,7 +180,7 @@ class MyTests {
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Delete Role Count"))
-         val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse2 = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -193,7 +193,7 @@ class MyTests {
 
     @Test
     fun testRoleUserDelete() {
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -202,7 +202,7 @@ class MyTests {
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Delete Role Count"))
-         val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse2 = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
@@ -214,24 +214,24 @@ class MyTests {
     }
 
     @Test
-    //need this to be the last role delete test run hence the x
+            //need this to be the last role delete test run hence the x
     fun testRoleXDelete() {
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
                 .asJson()
         val obj:JSONObject = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Delete Role Count"))
-        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/delete")
+        val jsonResponse2 = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/role")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "testrole")
                 .asJson()
         val obj2:JSONObject = jsonResponse2.body.`object`
         //if not logged in will have expected array error
-       assertEquals(0, obj2.getInt("Delete Role Count"))
-       assertNotNull(obj2.getString("Error"))
+        assertEquals(0, obj2.getInt("Delete Role Count"))
+        assertNotNull(obj2.getString("Error"))
     }
 
     //now testing service api, service testservice exists at this point
@@ -239,21 +239,21 @@ class MyTests {
     @Test
     fun testServiceRead(){
         //read all services should only be one
-     val oneResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service/read")
-             .header("JSESSIONID", jsessionId)
-             .header("JwtToken", jwtToken)
-             .asJson()
-     val oneArr = oneResponse.body.`object`.get("testservice") as JSONObject
-     assertEquals("sessionOperator", oneArr.getJSONArray("roles").get(0))
-     Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
+        val oneResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service")
+                .header("JSESSIONID", jsessionId)
+                .header("JwtToken", jwtToken)
+                .asJson()
+        val oneArr = oneResponse.body.`object`.get("testservice") as JSONObject
+        assertEquals("sessionOperator", oneArr.getJSONArray("roles").get(0))
+        Unirest.get("http://127.0.0.1:8080/rest/public/gateway/role/assign")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("rname", "guest")
                 .queryString("name", "testservice")
                 .queryString("type", "service")
                 .asJson()
-    //second read specific service account information
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service/read")
+        //second read specific service account information
+        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("sname", "testservice")
@@ -273,7 +273,7 @@ class MyTests {
                 "ETv0PQ5b7JOzPSYHah7HFxQeG6BtqQG7POajlSyQuTP4Un48hsmJuhqDHnP" +
                 "NFFTADiibjczcAWnwtFkGZa4x5VRLj8xJA7c8fnK0B5iCOfcGijnThqmarC" +
                 "Ci/SkohKv6eTFt+tFO1pfnXGgOQgH6cpKwIDAQAB"
-        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service/update")
+        val jsonResponse = Unirest.put("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -283,7 +283,7 @@ class MyTests {
         val obj = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Update Service Count"))
         //bottom one should fail
-        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/service/update")
+        val jsonResponse2 = Unirest.put("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -319,7 +319,7 @@ class MyTests {
                 .queryString("tempSecret", tempSecret)
                 .asJson()
         val token = tokenResponse.body.`object`.getString("BearerToken")
-        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/internal/gateway/session/set")
+        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/internal/gateway/session")
                 .header("Authorization", "bearer "  + token)
                 .header("Content-Type", "application/json")
                 .queryString("key", "a.b.c")
@@ -354,7 +354,7 @@ class MyTests {
                 .asJson()
         val token = tokenResponse.body.`object`.getString("BearerToken")
         val nodeid = jsessionId.substringBefore(".")
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/internal/gateway/session/get")
+        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/internal/gateway/session")
                 .header("Authorization", "bearer "  + token)
                 .queryString("key", "a.b.c")
                 .queryString("id", nodeid) //some valid session id
@@ -370,7 +370,7 @@ class MyTests {
     fun testUserRead(){
         //only two users: admin@gmail.com and test@gmail.com
         //read all users
-        val twoResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user/read")
+        val twoResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .asJson()
@@ -384,7 +384,7 @@ class MyTests {
                 .queryString("type", "user")
                 .asJson()
         //second read specific user account information
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user/read")
+        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("uname", "test@gmail.com")
@@ -397,7 +397,7 @@ class MyTests {
 
     @Test
     fun testUserUpdate(){
-        val jsonResponse = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user/update")
+        val jsonResponse = Unirest.put("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -407,7 +407,7 @@ class MyTests {
         val obj = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Update User Count"))
         //bottom one should fail
-        val jsonResponse2 = Unirest.post("http://127.0.0.1:8080/rest/public/gateway/user/update")
+        val jsonResponse2 = Unirest.put("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .header("Content-Type", "application/json")
@@ -422,14 +422,14 @@ class MyTests {
     //need this to be the last method for checking service api
     @Test
     fun testXServiceDelete(){
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service/delete")
+        val jsonResponse = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("sname", "testservice")
                 .asJson()
         val obj = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Delete Service Count"))
-        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/service/delete")
+        val jsonResponse2 = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/service")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("sname", "fakeservice")
@@ -441,14 +441,14 @@ class MyTests {
 
     @Test
     fun testUserXDelete(){
-        val jsonResponse = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user/delete")
+        val jsonResponse = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("uname", "test@gmail.com")
                 .asJson()
         val obj = jsonResponse.body.`object`
         assertEquals(1, obj.getInt("Delete User Count"))
-        val jsonResponse2 = Unirest.get("http://127.0.0.1:8080/rest/public/gateway/user/delete")
+        val jsonResponse2 = Unirest.delete("http://127.0.0.1:8080/rest/public/gateway/user")
                 .header("JSESSIONID", jsessionId)
                 .header("JwtToken", jwtToken)
                 .queryString("uname", "test@gmail.com")
@@ -467,13 +467,4 @@ class MyTests {
         val p = """(?<=name=\"testid\" content=\")[^\"]*(?=\")""".toRegex().find(str)?.groupValues?.get(0)
         assertEquals("5629ba47d624b2d2688c0a0340b29344", p)
     }
-
-
-
-
-
-
-
-
 }
-
