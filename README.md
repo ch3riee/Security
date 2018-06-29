@@ -14,7 +14,7 @@ docker-compose up
 ```
 ### 3. Example Rest Endpoint 
 To check if working, go to `http://127.0.0.1:8080/rest/public/gateway/sample/hello` </br>
-This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/public/gateway/session/login </br>
+This should bounce you automatically to the login page at: `http://127.0.0.1:8080/rest/public/gateway/session/login` </br>
 ## URL SCHEMA
 ### 1. Microservices URL Schema
 Please configure and implement your microservice urls by following this schema. All microservices internal or public should be prefixed by `/rest/`, followed by **public** or **internal**, followed by microservice name (in our case "gateway"), and then followed by any modules. The rest of the URL is up to you. For example our login page lies at: `http://127.0.0.1:8080/rest/public/gateway/session/login`. For more examples please look at the [Reference.md](Reference.md) file.
