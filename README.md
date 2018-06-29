@@ -13,11 +13,11 @@ git clone https://github.com/ch3riee/Security.git .
 docker-compose up
 ```
 ### 3. Example Rest Endpoint 
-To check if working, go to http://127.0.0.1:8080/rest/public/gateway/sample/hello </br>
+To check if working, go to `http://127.0.0.1:8080/rest/public/gateway/sample/hello` </br>
 This should bounce you automatically to the login page at: http://127.0.0.1:8080/rest/public/gateway/session/login </br>
 ## URL SCHEMA
 ### 1. Microservices URL Schema
-Please configure and implement your microservice urls by following this schema. All microservices internal or public should be prefixed by `/rest/`, followed by **public** or **internal**, followed by microservice name (in our case "gateway"), and then followed by any modules. The rest of the URL is up to you. For example our login page lies at: http://127.0.0.1:8080/rest/public/gateway/session/login. For more examples please look at the [Reference.md](Reference.md) file.
+Please configure and implement your microservice urls by following this schema. All microservices internal or public should be prefixed by `/rest/`, followed by **public** or **internal**, followed by microservice name (in our case "gateway"), and then followed by any modules. The rest of the URL is up to you. For example our login page lies at: `http://127.0.0.1:8080/rest/public/gateway/session/login`. For more examples please look at the [Reference.md](Reference.md) file.
 ## DOCKER
 ### 1. Brief Notes On Making Changes To This Gateway's  Java Jar File </br>
 This security gateway and all of its features have been bundled together into a Java jar file that is mounted into a DockerFile, which is then included within the docker-compose.yml file under the container srvjavausers. The Java jar was built using the library shadowJar using the command:
@@ -50,7 +50,7 @@ location / {
     index index.html ;
 }
 ```
-After configuration, if you set location path as context root and followed the steps above, you should be able to access your static content at http://127.0.0.1:8080/ </br>
+After configuration, if you set location path as context root and followed the steps above, you should be able to access your static content at `http://127.0.0.1:8080/` </br>
 ## WEB SERVICE DEPLOYMENT
 ### 1. Add Microservice Container to Docker-Compose.yml </br>
    Locate the docker-compose.yml file at project root. If you are unfamiliar with docker-compose, please read the following documentation at https://docs.docker.com/compose/ . In order to add your microservice to the API gateway, first add a separate container for your microservice within the docker-compose file.  For an example please look at container srv-sample.  </br>
@@ -110,7 +110,7 @@ map $uri $public_services {
 
 }
 ```
-There are two map blocks, one for any internal services that microservices can use (ex: session get/set api) and one for public web services for web users. You will be adding to the first map block, which is the public one. There is already an example sample web service that is mapped from the URL to the correct server. Nginx will use the same location block and this map in order to proxy pass to the correct server. The default server will be this gateway hosted at http://srvjavausers:8081, under the upstream server name http://microservice-gateway. For more information please take a look at the Nginx documentation. </br>
+There are two map blocks, one for any internal services that microservices can use (ex: session get/set api) and one for public web services for web users. You will be adding to the first map block, which is the public one. There is already an example sample web service that is mapped from the URL to the correct server. Nginx will use the same location block and this map in order to proxy pass to the correct server. The default server will be this gateway hosted at `http://srvjavausers:8081`, under the upstream server name `http://microservice-gateway`. For more information please take a look at the Nginx documentation. </br>
 
 #### ADDING YOUR INTERNAL MICROSERVICE TO NGINX
  Please locate the site.conf.template NGINX configuration file within the project directory at /settings/nginx/conf.d. This web commented section in the NGINX configuration is where any web applications (microservices) meant for web users will be mapped to. Residing in this section is the internal service location block. Within it, the block
@@ -144,13 +144,13 @@ map $uri $internal_services{
 }
 
 ```
-There are two map blocks, one for any internal services that microservices can use (ex: session get/set api) and one for public web services for web users. You will be adding to the second map block, which is the internal one. Here you can see how our internal gateway services have been mapped. Nginx will use the same location block and this map in order to proxy pass to the correct server. The default internal server will be this gateway hosted at http://srvjavausers:8081, under the upstream server name http://microservice-gateway. For more information please take a look at the Nginx documentation. </br>
+There are two map blocks, one for any internal services that microservices can use (ex: session get/set api) and one for public web services for web users. You will be adding to the second map block, which is the internal one. Here you can see how our internal gateway services have been mapped. Nginx will use the same location block and this map in order to proxy pass to the correct server. The default internal server will be this gateway hosted at `http://srvjavausers:8081`, under the upstream server name `http://microservice-gateway`. For more information please take a look at the Nginx documentation. </br>
 
 ## Using Shared Session Store, Authentication, Authorization
 ### 1. Create Service Account (Requires Admin Role)
 If you have admin role access, please use this API in order to register your microservice. Otherwise please have an admin follow these steps. Must have a service account in order to use the shared session store. </br>
 Example POST endpoint:
-http://127.0.0.1:8080/rest/public/gateway/service?sname=_____ </br>
+`http://127.0.0.1:8080/rest/public/gateway/service?sname=_____ `</br>
 **The SNAME query parameter**: Pass in the name that you desire the Microservice to be called.<br/>
 **Request body**: Pass in the Microservice's own RSA public key (please generate your own public key/private key pair) as part of a json object with the key name being "publickey". <br/>
 Your passed in Microservice's public key, will be used in order to encrypt a randomized tempSecret string. This is to make sure that any requests for the JWT Service Account token are only retrieved and used by the authorized Service Account. (One of the ways to get the service account token, admin role required) <br/>
@@ -161,7 +161,7 @@ Your passed in Microservice's public key, will be used in order to encrypt a ran
 }
 ```
 ### 2. Retrieve Service Account Token (via Admin)
-http://127.0.0.1:8080/rest/public/gateway/service/getServiceToken?sname=_______&tempSecret=______  </br>
+`http://127.0.0.1:8080/rest/public/gateway/service/getServiceToken?sname=_______&tempSecret=______ ` </br>
   tempSecret may be left out initially from the query param. However the name of the microservice is required (name you registered account under), to make sure you retrieve the right JWT token. <br/>
   If tempSecret is left out, you will receive the tempSecret string that has been encrypted with the public key (that you registered). <br/>
   In order to get the actual JWT token for your service account, you must decrypt the tempSecret string with your own private key (from the public key/private key pair) and call this API endpoint again with the decrypted string passed in tempSecret query param. If this tempSecret matches the one given, you will receive the JWT token inside of the Response body within a JSON object.  Please save this token somewhere secure. </br>
@@ -185,7 +185,7 @@ python dump_token.py sample
 **NOTE: sample is the Service Account name. This python script requires psycopg2 python module in order to connect to postgres DB** </br>
 This step will dump your Service Token into the console. Please save this token somewhere secure. Usage process described below for Service Token. </br>
 ### 4. Use Service Account JWT Token
-Grab the JWT token from the JSON object you received from http://127.0.0.1:8080/rest/public/gateway/service/getServiceToken, or from the console output, and place this into every request header for your microservice. <br/>
+Grab the JWT token from the JSON object you received from `http://127.0.0.1:8080/rest/public/gateway/service/getServiceToken`, or from the console output, and place this into every request header for your microservice. <br/>
 **Header name**: authorization  
 **Header content**: Bearer [place jwt token here after a single white space]  
 *This token is required in order to use any of the Service APIS, such as the Session Get/Set API* </br>
@@ -194,20 +194,21 @@ In order to get/set into a specific user's session, you must have a reference to
 *Prior to this step please follow step 4 and put [authorization: Bearer nfjfkjbfkjbefkjebf] in header. You must also have sessionOperator role allowed inside of this token in order to get and set attributes inside of the session.* </br>
 #### a) Get Attributes from Session
 HTTP GET METHOD:
-http://127.0.0.1:8080/rest/internal/gateway/session/key=________&id=_________ </br>
+`http://127.0.0.1:8080/rest/internal/gateway/session/key=________&id=_________` </br>
 **key query param**: This param should be either the name of the attribute stored in the session, or the dotted notation json attribute path to the key you would like to retrieve. <br/>
 **id query param**: This param is where you pass in the desired Session ID that you would like to get an attribute from. </br>
 For example either myAttribute or myAttribute.a.b.c (the second will go into the attribute myAttribute and return the value of c). 
 #### b) Set Attributes in Session
 HTTP POST METHOD:
-http://127.0.0.1:8080/rest/internal/gateway/session?key=________&id=__________ </br>
+`http://127.0.0.1:8080/rest/internal/gateway/session?key=________&id=__________`
+</br>
 **key query param**: Same as the get Attribute key query param. Except that it will create the json objects if they do not exist. <br/>
 **id query param**: This param is where you pass in the desired Session ID that you would like to set attribute into. </br>
 **EXAMPLE** : A.B.C -> will store whatever json object/arrays you pass in the request body at attribute C, that is within json objects B and A. The attribute name stored in the session itself will be A. <br/>
 **You can add/replace json objects but you can only replace json Arrays (cannot add elements into the array, will replace the whole thing)** </br>
 ### 6. User Authentication
 If you have properly configured your microservice within NGINX and Docker, any request to your registered endpoints will bounce unauthenticated users to the shared Login page provided by the API gateway. </br>
-There are three separate options for users to login  at http://127.0.0.1:8080/rest/public/gateway/session/login and one way for users to logout at http://127.0.0.1:8080/rest/public/gateway/session/logout. </br>
+There are three separate options for users to login  at `http://127.0.0.1:8080/rest/public/gateway/session/login` and one way for users to logout at `http://127.0.0.1:8080/rest/public/gateway/session/logout`. </br>
 #### a) Login Locally
 First press the signup link to signup for an account. Then follow the directions onscreen to login. </br>
 #### b) Login SSO
@@ -215,10 +216,10 @@ Click on the github link to login via SSO through Github.  </br>
 #### c) Login Guest
 Option to continue as guest role is available, note that any user information will not be saved. However you will still receive a session and JWT token like the other login options. </br>
 #### d) Logout
-Logout by calling http://127.0.0.1:8080/rest/public/gateway/session/logout. This will invalidate the user’s session </br>
+Logout by calling `http://127.0.0.1:8080/rest/public/gateway/session/logout`. This will invalidate the user’s session </br>
 ### 7. Use User JWT Token + Authorization
 #### a) Decrypt User JWT Token Via JJWT Lib
-Grab the user’s JwtToken cookie, which is automatically set by the authentication service for all authenticated users who have logged in. We are using Java JJWT library located at https://github.com/jwtk/jjwt. Please add this library as a gradle dependency prior to attempting to decrypt JWT Token if following our decryption example. </br>
+Grab the user’s JwtToken cookie, which is automatically set by the authentication service for all authenticated users who have logged in. We are using Java JJWT library located at `https://github.com/jwtk/jjwt`. Please add this library as a gradle dependency prior to attempting to decrypt JWT Token if following our decryption example. </br>
 ```
 var publicKey = (this::class.java.classLoader)
                         .getResource("pki/Public.key")
